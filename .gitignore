@@ -1,0 +1,12 @@
+**/node_modules/
+**/dist/
+**/.angular/
+**/.env
+*.log
+.DS_Store
+coverage/
+.vscode/
+README.md
+AGENTS.md
+docs/
+!backend/AGENTS.md

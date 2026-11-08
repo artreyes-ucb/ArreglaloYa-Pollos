@@ -1,0 +1,200 @@
+<section class="auth-page">
+  <aside class="auth-brand">
+    <a routerLink="/login" class="auth-logo">
+      <span class="auth-logo__mark" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.7-2.7 2.3-2.3z"
+          />
+        </svg>
+      </span>
+      <span>Arréglalo <strong>Ya</strong></span>
+    </a>
+
+    <div class="auth-brand__content">
+      <h1>Una sola cuenta, <span>dos formas de trabajar.</span></h1>
+      <p>
+        Regístrate como cliente y, si quieres ofrecer tus servicios, activa el rol de trabajador
+        independiente sin crear otra cuenta.
+      </p>
+      <ul class="auth-brand__list">
+        <li>Registro gratuito en menos de un minuto.</li>
+        <li>Publica y gestiona solicitudes como cliente.</li>
+        <li>Ofrece tus servicios cuando tú decidas.</li>
+      </ul>
+    </div>
+
+    <p class="auth-brand__footer">Arréglalo Ya · Grupo 2 · Universidad Católica Boliviana</p>
+  </aside>
+
+  <div class="auth-panel">
+    <div class="auth-panel__inner auth-panel__inner--wide">
+      <a routerLink="/login" class="auth-mobile-logo">
+        <span class="auth-logo__mark" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.7-2.7 2.3-2.3z"
+            />
+          </svg>
+        </span>
+        <span>Arréglalo <strong>Ya</strong></span>
+      </a>
+
+      <div class="auth-card">
+        <div class="auth-card__header">
+          <span class="eyebrow">Crea tu cuenta</span>
+          <h2>Regístrate</h2>
+          <p>Completa tus datos para empezar a usar Arréglalo Ya.</p>
+        </div>
+
+        @if (error()) {
+          <div class="alert alert--error" role="alert">{{ error() }}</div>
+        }
+
+        <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="reg-nombres">Nombres</label>
+              <input
+                id="reg-nombres"
+                type="text"
+                formControlName="nombres"
+                autocomplete="given-name"
+                placeholder="Ana"
+                [class.invalid]="!!mensaje('nombres')"
+              />
+              @if (mensaje('nombres')) {
+                <span class="field__error">{{ mensaje('nombres') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="reg-apellidos">Apellidos</label>
+              <input
+                id="reg-apellidos"
+                type="text"
+                formControlName="apellidos"
+                autocomplete="family-name"
+                placeholder="Pérez"
+                [class.invalid]="!!mensaje('apellidos')"
+              />
+              @if (mensaje('apellidos')) {
+                <span class="field__error">{{ mensaje('apellidos') }}</span>
+              }
+            </div>
+
+            <div class="field full">
+              <label for="reg-correo">Correo electrónico</label>
+              <input
+                id="reg-correo"
+                type="email"
+                formControlName="correo"
+                autocomplete="email"
+                placeholder="tucorreo@ejemplo.com"
+                [class.invalid]="!!mensaje('correo')"
+              />
+              @if (mensaje('correo')) {
+                <span class="field__error">{{ mensaje('correo') }}</span>
+              }
+            </div>
+
+            <div class="field full">
+              <label for="reg-telefono">Teléfono</label>
+              <input
+                id="reg-telefono"
+                type="tel"
+                formControlName="telefono"
+                autocomplete="tel"
+                placeholder="71234567"
+                [class.invalid]="!!mensaje('telefono')"
+              />
+              @if (mensaje('telefono')) {
+                <span class="field__error">{{ mensaje('telefono') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="reg-contrasena">Contraseña</label>
+              <input
+                id="reg-contrasena"
+                type="password"
+                formControlName="contrasena"
+                autocomplete="new-password"
+                placeholder="Mínimo 8 caracteres"
+                [class.invalid]="!!mensaje('contrasena')"
+              />
+              @if (mensaje('contrasena')) {
+                <span class="field__error">{{ mensaje('contrasena') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="reg-confirmar">Confirmar contraseña</label>
+              <input
+                id="reg-confirmar"
+                type="password"
+                formControlName="confirmarContrasena"
+                autocomplete="new-password"
+                placeholder="Repite tu contraseña"
+                [class.invalid]="!!mensaje('confirmarContrasena') || contrasenasNoCoinciden()"
+              />
+              @if (mensaje('confirmarContrasena')) {
+                <span class="field__error">{{ mensaje('confirmarContrasena') }}</span>
+              } @else if (contrasenasNoCoinciden()) {
+                <span class="field__error">Las contraseñas no coinciden.</span>
+              }
+            </div>
+
+            <div class="full">
+              <label class="checkbox" for="reg-trabajador">
+                <input
+                  id="reg-trabajador"
+                  type="checkbox"
+                  formControlName="registrarseComoTrabajador"
+                />
+                <span>
+                  <strong
+                    >Quiero ofrecer mis servicios también como Trabajador Independiente</strong
+                  >
+                  <span>Podrás alternar entre ambos roles sin duplicar tu cuenta.</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <button
+            class="btn btn--primary btn--block btn--lg boton-registro"
+            type="submit"
+            [disabled]="enviando()"
+          >
+            @if (enviando()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            {{ enviando() ? 'Creando cuenta…' : 'Crear mi cuenta' }}
+          </button>
+        </form>
+
+        <div class="auth-links">
+          <p>
+            ¿Ya tienes una cuenta?
+            <a routerLink="/login">Inicia sesión</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

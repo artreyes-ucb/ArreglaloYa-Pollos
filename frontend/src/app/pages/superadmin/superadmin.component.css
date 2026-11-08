@@ -1,0 +1,346 @@
+.superadmin {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.superadmin .page__header {
+  margin-bottom: 0;
+}
+
+.seccion {
+  margin: 0;
+}
+
+/* ==========================================================================
+   Tarjetas de estadísticas
+   ========================================================================== */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card__icono {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+}
+
+.stat-card__icono svg {
+  width: 21px;
+  height: 21px;
+}
+
+.stat-card__icono--azul {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.stat-card__icono--verde {
+  background: var(--success-soft);
+  color: #047857;
+}
+
+.stat-card__icono--rojo {
+  background: var(--danger-soft);
+  color: #b91c1c;
+}
+
+.stat-card__icono--ambar {
+  background: var(--accent-soft);
+  color: #b45309;
+}
+
+.stat-card__label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stat-card__valor {
+  display: block;
+  margin: 0.18rem 0 0.12rem;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.stat-card__nota {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   Tabla de administradores
+   ========================================================================== */
+
+.tu-cuenta {
+  margin-left: 0.3rem;
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.accion-bloqueada {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.55rem;
+  border-radius: 7px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.confirmar-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.25rem 0.2rem 0.55rem;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff7f7;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #991b1b;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Auditoría
+   ========================================================================== */
+
+.auditoria-estado {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.live-indicator {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse-dot 1.8s infinite;
+}
+
+.auditoria-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  padding: 0.95rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.auditoria-toolbar__busqueda {
+  flex: 1 1 280px;
+}
+
+.auditoria-toolbar__accion {
+  flex: 0 1 240px;
+}
+
+.auditoria-toolbar .field input,
+.auditoria-toolbar .field select {
+  background: #ffffff;
+}
+
+.auditoria-error {
+  padding: 1rem 1.4rem 0;
+}
+
+.tabla--auditoria td {
+  vertical-align: top;
+}
+
+.celda-fecha {
+  display: block;
+  min-width: 155px;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.auditoria-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1.4rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.auditoria-footer__auto {
+  color: var(--muted-light);
+}
+
+/* ==========================================================================
+   Modal de gestión
+   ========================================================================== */
+
+.admin-resumen {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.8rem 0.95rem;
+  margin-bottom: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.admin-resumen > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-resumen__label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.roles-fieldset {
+  margin: 1.4rem 0 0;
+  padding: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.roles-fieldset legend {
+  padding: 0 0.4rem;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.roles-fieldset .field__hint {
+  margin: 0 0 0.85rem;
+}
+
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.role-checkbox--bloqueado {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.role-checkbox--bloqueado input {
+  cursor: not-allowed;
+}
+
+.roles-fieldset__aviso {
+  margin: 0.85rem 0 0;
+  color: var(--warning);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1080px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .auditoria-toolbar {
+    padding: 0.85rem 1rem;
+  }
+
+  .auditoria-toolbar__busqueda,
+  .auditoria-toolbar__accion {
+    flex: 1 1 100%;
+  }
+
+  .auditoria-toolbar > .btn {
+    width: 100%;
+  }
+
+  .auditoria-footer {
+    padding: 0.8rem 1rem;
+  }
+
+  .auditoria-estado {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .celda-fecha {
+    min-width: 0;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .roles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-resumen {
+    gap: 0.75rem;
+  }
+}

@@ -1,0 +1,131 @@
+<section class="auth-page">
+  <aside class="auth-brand">
+    <a routerLink="/login" class="auth-logo">
+      <span class="auth-logo__mark" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.7-2.7 2.3-2.3z"
+          />
+        </svg>
+      </span>
+      <span>Arréglalo <strong>Ya</strong></span>
+    </a>
+
+    <div class="auth-brand__content">
+      <h1>Tu hogar en buenas manos, <span>sin complicaciones.</span></h1>
+      <p>
+        Conectamos clientes con trabajadores independientes de confianza para resolver esos arreglos
+        que no pueden esperar.
+      </p>
+      <ul class="auth-brand__list">
+        <li>Encuentra profesionales para cada tipo de servicio.</li>
+        <li>Gestiona tus solicitudes desde un solo lugar.</li>
+        <li>Alterna entre cliente y trabajador con una sola cuenta.</li>
+      </ul>
+    </div>
+
+    <p class="auth-brand__footer">Arréglalo Ya · Grupo 2 · Universidad Católica Boliviana</p>
+  </aside>
+
+  <div class="auth-panel">
+    <div class="auth-panel__inner">
+      <a routerLink="/login" class="auth-mobile-logo">
+        <span class="auth-logo__mark" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.7-2.7 2.3-2.3z"
+            />
+          </svg>
+        </span>
+        <span>Arréglalo <strong>Ya</strong></span>
+      </a>
+
+      <div class="auth-card">
+        <div class="auth-card__header">
+          <span class="eyebrow">Bienvenido de nuevo</span>
+          <h2>Inicia sesión</h2>
+          <p>Accede a tu cuenta para gestionar tus servicios y tu perfil.</p>
+        </div>
+
+        @if (exito()) {
+          <div class="alert alert--success" role="status">{{ exito() }}</div>
+        }
+
+        @if (error()) {
+          <div class="alert alert--error" role="alert">{{ error() }}</div>
+        }
+
+        <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+          <div class="stack">
+            <div class="field">
+              <label for="login-correo">Correo electrónico</label>
+              <input
+                id="login-correo"
+                type="email"
+                formControlName="correo"
+                autocomplete="email"
+                placeholder="tucorreo@ejemplo.com"
+                [class.invalid]="mostrarError('correo')"
+              />
+              @if (mostrarError('correo')) {
+                <span class="field__error">{{ mensajeCorreo() }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <div class="field__label-row">
+                <label for="login-contrasena">Contraseña</label>
+                <a routerLink="/forgot-password" class="enlace-recuperacion">
+                  ¿Olvidaste tu contraseña?
+                </a>
+              </div>
+              <input
+                id="login-contrasena"
+                type="password"
+                formControlName="contrasena"
+                autocomplete="current-password"
+                placeholder="Tu contraseña"
+                [class.invalid]="mostrarError('contrasena')"
+              />
+              @if (mostrarError('contrasena')) {
+                <span class="field__error">{{ mensajeContrasena() }}</span>
+              }
+            </div>
+
+            <button
+              class="btn btn--primary btn--block btn--lg"
+              type="submit"
+              [disabled]="enviando()"
+            >
+              @if (enviando()) {
+                <span class="spinner" aria-hidden="true"></span>
+              }
+              {{ enviando() ? 'Ingresando…' : 'Iniciar sesión' }}
+            </button>
+          </div>
+        </form>
+
+        <div class="auth-links">
+          <p>
+            ¿Aún no tienes cuenta?
+            <a routerLink="/register">Regístrate gratis</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

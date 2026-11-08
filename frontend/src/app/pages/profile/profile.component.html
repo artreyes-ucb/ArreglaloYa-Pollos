@@ -1,0 +1,255 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <span class="eyebrow">Mi cuenta</span>
+      <h1>Hola, {{ usuario()?.nombres || 'usuario' }}</h1>
+      <p class="page__subtitle">
+        Administra tus datos personales y el rol con el que usas Arréglalo Ya.
+      </p>
+    </div>
+
+    @if (usuario(); as cuenta) {
+      <div class="profile-identity">
+        <div class="profile-avatar" aria-hidden="true">{{ iniciales() }}</div>
+        <div class="profile-identity__datos">
+          <strong>{{ cuenta.nombres }} {{ cuenta.apellidos }}</strong>
+          <span>{{ cuenta.correo }}</span>
+        </div>
+      </div>
+    }
+  </header>
+
+  @if (error()) {
+    <div class="alert alert--error" role="alert">{{ error() }}</div>
+  }
+  @if (exito()) {
+    <div class="alert alert--success" role="status">{{ exito() }}</div>
+  }
+
+  <div class="profile-grid">
+    <article class="card">
+      <div class="card__header">
+        <div>
+          <h2>Datos personales</h2>
+          <p>Actualiza la información visible en tu cuenta.</p>
+        </div>
+        @if (cargando()) {
+          <span class="loading-inline">
+            <span class="spinner spinner--dark" aria-hidden="true"></span>
+            Cargando…
+          </span>
+        }
+      </div>
+
+      <div class="card__body">
+        <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label for="perfil-nombres">Nombres</label>
+              <input
+                id="perfil-nombres"
+                type="text"
+                formControlName="nombres"
+                autocomplete="given-name"
+                [class.invalid]="mostrarError('nombres')"
+              />
+              @if (mostrarError('nombres')) {
+                <span class="field__error">{{ mensaje('nombres') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="perfil-apellidos">Apellidos</label>
+              <input
+                id="perfil-apellidos"
+                type="text"
+                formControlName="apellidos"
+                autocomplete="family-name"
+                [class.invalid]="mostrarError('apellidos')"
+              />
+              @if (mostrarError('apellidos')) {
+                <span class="field__error">{{ mensaje('apellidos') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="perfil-telefono">Teléfono</label>
+              <input
+                id="perfil-telefono"
+                type="tel"
+                formControlName="telefono"
+                autocomplete="tel"
+                [class.invalid]="mostrarError('telefono')"
+              />
+              @if (mostrarError('telefono')) {
+                <span class="field__error">{{ mensaje('telefono') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="perfil-correo">Correo electrónico</label>
+              <input id="perfil-correo" type="email" [value]="usuario()?.correo || ''" disabled />
+              <span class="field__hint">
+                El correo no se puede modificar desde este formulario.
+              </span>
+            </div>
+          </div>
+
+          <div class="profile-form__acciones">
+            <button class="btn btn--primary" type="submit" [disabled]="guardando() || cargando()">
+              @if (guardando()) {
+                <span class="spinner" aria-hidden="true"></span>
+              }
+              {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </article>
+
+    <aside class="stack">
+      <article class="role-card">
+        <span class="eyebrow">Rol activo</span>
+
+        <div class="role-card__headline">
+          <span class="role-card__icon" aria-hidden="true">
+            @if (usuario()?.rolActivo === 'TRABAJADOR') {
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="7" width="18" height="13" rx="2" />
+                <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <path d="M3 12h18" />
+              </svg>
+            } @else if (usuario()?.rolActivo === 'ADMIN' || usuario()?.rolActivo === 'SUPERADMIN') {
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+            } @else {
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+            }
+          </span>
+          <div>
+            <h2>{{ usuario()?.rolActivo || 'CLIENTE' }}</h2>
+            <span [class]="claseRol(usuario()?.rolActivo)">
+              {{ etiquetaRolActivo() }}
+            </span>
+          </div>
+        </div>
+
+        <p class="role-card__descripcion">{{ descripcionRolActivo() }}</p>
+
+        @if (puedeAlternarRol()) {
+          <div class="role-switch" role="group" aria-label="Cambiar rol activo">
+            <button
+              type="button"
+              [class.activo]="usuario()?.rolActivo === 'CLIENTE'"
+              [disabled]="cambiandoRol()"
+              (click)="cambiarRol('CLIENTE')"
+            >
+              Cliente
+            </button>
+            <button
+              type="button"
+              [class.activo]="usuario()?.rolActivo === 'TRABAJADOR'"
+              [disabled]="cambiandoRol()"
+              (click)="cambiarRol('TRABAJADOR')"
+            >
+              Trabajador
+            </button>
+          </div>
+          <p class="role-card__hint">El cambio es inmediato y no duplica tu cuenta.</p>
+        } @else if (puedeHabilitarTrabajador()) {
+          <button
+            class="btn btn--accent btn--block"
+            type="button"
+            (click)="habilitarRolTrabajador()"
+            [disabled]="habilitandoRol()"
+          >
+            @if (habilitandoRol()) {
+              <span class="spinner spinner--dark" aria-hidden="true"></span>
+            }
+            {{ habilitandoRol() ? 'Habilitando…' : 'Habilitar rol de Trabajador' }}
+          </button>
+          <p class="role-card__hint">
+            Agrega el rol a tu cuenta actual. No se crea un registro nuevo.
+          </p>
+        } @else if (esRolAdministrativo()) {
+          <div class="role-card__nota-admin">
+            <span class="role-card__nota-admin-icono" aria-hidden="true">ⓘ</span>
+            <span>
+              Los permisos administrativos se validan en el servidor según tu rol activo.
+            </span>
+          </div>
+        }
+
+        @if (exitoRol()) {
+          <div class="alert alert--success role-card__alerta" role="status">
+            {{ exitoRol() }}
+          </div>
+        }
+        @if (errorRol()) {
+          <div class="alert alert--error role-card__alerta" role="alert">
+            {{ errorRol() }}
+          </div>
+        }
+      </article>
+
+      <article class="card">
+        <div class="card__header">
+          <div>
+            <h2>Resumen de la cuenta</h2>
+            <p>Roles y estado actual.</p>
+          </div>
+        </div>
+        <div class="card__body">
+          <div class="chip-list">
+            @for (rol of usuario()?.roles ?? []; track rol) {
+              <span [class]="claseChip(rol)">{{ rol }}</span>
+            }
+          </div>
+
+          <dl class="account-meta">
+            <div>
+              <dt>Estado</dt>
+              <dd>
+                <span [class]="claseEstado()">{{ usuario()?.estado }}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Teléfono</dt>
+              <dd>{{ usuario()?.telefono || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Correo</dt>
+              <dd class="account-meta__correo">{{ usuario()?.correo }}</dd>
+            </div>
+          </dl>
+        </div>
+      </article>
+    </aside>
+  </div>
+</section>

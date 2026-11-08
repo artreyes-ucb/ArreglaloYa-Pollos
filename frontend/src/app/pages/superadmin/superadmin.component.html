@@ -1,0 +1,719 @@
+<section class="page superadmin">
+  <header class="page__header">
+    <div>
+      <span class="eyebrow">CU-24 · Superadministración</span>
+      <h1>Panel de superadministración</h1>
+      <p class="page__subtitle">
+        Crea y administra cuentas de administrador, controla sus roles y revisa la auditoría de las
+        operaciones críticas del sistema.
+      </p>
+    </div>
+
+    <div class="page__actions">
+      <button
+        class="btn btn--secondary"
+        type="button"
+        (click)="actualizarTodo()"
+        [disabled]="cargandoAdmins() || cargandoAuditoria()"
+      >
+        @if (cargandoAdmins() || cargandoAuditoria()) {
+          <span class="spinner spinner--dark" aria-hidden="true"></span>
+        }
+        Actualizar
+      </button>
+      <button class="btn btn--primary" type="button" (click)="abrirModalCrear()">
+        <span aria-hidden="true">+</span>
+        Nuevo administrador
+      </button>
+    </div>
+  </header>
+
+  @if (exito()) {
+    <div class="alert alert--success" role="status">{{ exito() }}</div>
+  }
+
+  @if (errorAdmins()) {
+    <div class="alert alert--error" role="alert">{{ errorAdmins() }}</div>
+  }
+
+  <div class="stats-grid">
+    <article class="stat-card">
+      <span class="stat-card__icono stat-card__icono--azul" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </span>
+      <div>
+        <span class="stat-card__label">Administradores</span>
+        <strong class="stat-card__valor">{{ totalAdmins() }}</strong>
+        <span class="stat-card__nota">Cuentas con acceso administrativo</span>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <span class="stat-card__icono stat-card__icono--verde" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+          <path d="m22 4-10 10-3-3" />
+        </svg>
+      </span>
+      <div>
+        <span class="stat-card__label">Cuentas activas</span>
+        <strong class="stat-card__valor">{{ adminsActivos() }}</strong>
+        <span class="stat-card__nota">Pueden iniciar sesión ahora</span>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <span class="stat-card__icono stat-card__icono--rojo" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="m4.93 4.93 14.14 14.14" />
+        </svg>
+      </span>
+      <div>
+        <span class="stat-card__label">Cuentas inactivas</span>
+        <strong class="stat-card__valor">{{ adminsInactivos() }}</strong>
+        <span class="stat-card__nota">Acceso temporalmente bloqueado</span>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <span class="stat-card__icono stat-card__icono--ambar" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M12 8v4l3 3" />
+          <circle cx="12" cy="12" r="10" />
+        </svg>
+      </span>
+      <div>
+        <span class="stat-card__label">Eventos recientes</span>
+        <strong class="stat-card__valor">{{ eventosUltimas24h() }}</strong>
+        <span class="stat-card__nota">Registrados en las últimas 24 horas</span>
+      </div>
+    </article>
+  </div>
+
+  <article class="card seccion">
+    <div class="card__header">
+      <div>
+        <h2>Cuentas de administrador</h2>
+        <p>
+          Activa o desactiva cuentas y ajusta sus roles. Los permisos se derivan del rol asignado.
+        </p>
+      </div>
+
+      @if (cargandoAdmins()) {
+        <span class="loading-inline">
+          <span class="spinner spinner--dark" aria-hidden="true"></span>
+          Cargando cuentas…
+        </span>
+      } @else {
+        <span class="badge badge--neutral">{{ totalAdmins() }} en total</span>
+      }
+    </div>
+
+    @if (!cargandoAdmins() && admins().length === 0) {
+      <div class="empty-state">
+        <strong>Aún no hay cuentas de administrador</strong>
+        <p>
+          Crea la primera cuenta con el botón «Nuevo administrador» para comenzar a delegar la
+          gestión del sistema.
+        </p>
+      </div>
+    } @else {
+      <div class="tabla-wrap">
+        <table class="tabla tabla--apilable">
+          <thead>
+            <tr>
+              <th scope="col">Administrador</th>
+              <th scope="col">Teléfono</th>
+              <th scope="col">Roles</th>
+              <th scope="col">Rol activo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (admin of admins(); track admin.id) {
+              <tr>
+                <td data-label="Administrador">
+                  <div class="celda-principal">
+                    <strong>
+                      {{ admin.nombres }} {{ admin.apellidos }}
+                      @if (esPropio(admin)) {
+                        <span class="tu-cuenta">(tú)</span>
+                      }
+                    </strong>
+                    <span>{{ admin.correo }}</span>
+                  </div>
+                </td>
+                <td data-label="Teléfono">{{ admin.telefono }}</td>
+                <td data-label="Roles">
+                  <div class="chip-list">
+                    @for (rol of admin.roles; track rol) {
+                      <span [class]="claseChip(rol)">{{ rol }}</span>
+                    }
+                  </div>
+                </td>
+                <td data-label="Rol activo">
+                  <span [class]="claseRol(admin.rolActivo)">
+                    {{ admin.rolActivo }}
+                  </span>
+                </td>
+                <td data-label="Estado">
+                  <span [class]="claseEstado(admin.estado)">
+                    {{ admin.estado }}
+                  </span>
+                </td>
+                <td data-label="Acciones">
+                  <div class="celda-acciones">
+                    <button
+                      class="btn btn--secondary btn--sm"
+                      type="button"
+                      (click)="abrirModalEditar(admin)"
+                    >
+                      Gestionar
+                    </button>
+
+                    @if (esPropio(admin)) {
+                      <span class="accion-bloqueada" title="No puedes desactivar tu propia cuenta">
+                        Tu cuenta
+                      </span>
+                    } @else if (confirmandoEstadoId() === admin.id) {
+                      <span class="confirmar-estado">
+                        <span>¿Seguro?</span>
+                        <button
+                          class="btn btn--danger btn--sm"
+                          type="button"
+                          (click)="confirmarCambioEstado(admin)"
+                        >
+                          Sí
+                        </button>
+                        <button
+                          class="btn btn--ghost btn--sm"
+                          type="button"
+                          (click)="cancelarCambioEstado()"
+                        >
+                          No
+                        </button>
+                      </span>
+                    } @else {
+                      <button
+                        [class]="
+                          esActivo(admin)
+                            ? 'btn btn--danger-ghost btn--sm'
+                            : 'btn btn--success-ghost btn--sm'
+                        "
+                        type="button"
+                        (click)="solicitarCambioEstado(admin)"
+                        [disabled]="cambiandoEstadoId() === admin.id"
+                      >
+                        @if (cambiandoEstadoId() === admin.id) {
+                          <span class="spinner spinner--dark" aria-hidden="true"></span>
+                        }
+                        {{ esActivo(admin) ? 'Desactivar' : 'Activar' }}
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+
+  <article class="card seccion">
+    <div class="card__header">
+      <div>
+        <h2>Historial de auditoría</h2>
+        <p>Registro cronológico de las operaciones críticas realizadas en el sistema.</p>
+      </div>
+
+      <div class="auditoria-estado">
+        <span class="live-indicator" aria-hidden="true"></span>
+        <span> En vivo · actualizado a las {{ horaActualizacion() }} </span>
+        <button
+          class="btn btn--ghost btn--sm"
+          type="button"
+          (click)="cargarAuditoria()"
+          [disabled]="cargandoAuditoria()"
+        >
+          @if (cargandoAuditoria()) {
+            <span class="spinner spinner--dark" aria-hidden="true"></span>
+          }
+          Actualizar
+        </button>
+      </div>
+    </div>
+
+    <div class="auditoria-toolbar">
+      <div class="field auditoria-toolbar__busqueda">
+        <label for="auditoria-busqueda" class="sr-only"> Buscar en la auditoría </label>
+        <input
+          id="auditoria-busqueda"
+          type="search"
+          placeholder="Buscar por actor, acción, entidad o identificador…"
+          [value]="filtroTexto()"
+          (input)="filtroTexto.set($any($event.target).value)"
+        />
+      </div>
+
+      <div class="field auditoria-toolbar__accion">
+        <label for="auditoria-accion" class="sr-only"> Filtrar por acción </label>
+        <select
+          id="auditoria-accion"
+          [value]="filtroAccion()"
+          (change)="filtroAccion.set($any($event.target).value)"
+        >
+          <option value="TODAS">Todas las acciones</option>
+          @for (accion of accionesDisponibles(); track accion) {
+            <option [value]="accion">{{ accion }}</option>
+          }
+        </select>
+      </div>
+
+      @if (filtroTexto() || filtroAccion() !== 'TODAS') {
+        <button class="btn btn--ghost btn--sm" type="button" (click)="limpiarFiltros()">
+          Limpiar filtros
+        </button>
+      }
+    </div>
+
+    @if (errorAuditoria()) {
+      <div class="auditoria-error">
+        <div class="alert alert--error" role="alert">{{ errorAuditoria() }}</div>
+      </div>
+    }
+
+    @if (cargandoAuditoria() && auditoria().length === 0) {
+      <div class="empty-state">
+        <span class="spinner spinner--dark" aria-hidden="true"></span>
+        <strong>Cargando historial de auditoría…</strong>
+      </div>
+    } @else if (auditoriaFiltrada().length === 0) {
+      <div class="empty-state">
+        <strong>
+          {{
+            auditoria().length === 0
+              ? 'Todavía no hay eventos registrados'
+              : 'No hay eventos que coincidan con los filtros'
+          }}
+        </strong>
+        <p>
+          {{
+            auditoria().length === 0
+              ? 'Las operaciones críticas aparecerán aquí automáticamente.'
+              : 'Prueba con otro término de búsqueda o cambia la acción seleccionada.'
+          }}
+        </p>
+      </div>
+    } @else {
+      <div class="tabla-wrap">
+        <table class="tabla tabla--apilable tabla--auditoria">
+          <thead>
+            <tr>
+              <th scope="col">Fecha y hora</th>
+              <th scope="col">Actor</th>
+              <th scope="col">Acción</th>
+              <th scope="col">Entidad afectada</th>
+              <th scope="col">Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (registro of auditoriaFiltrada(); track registro.idAuditoria) {
+              <tr>
+                <td data-label="Fecha">
+                  <span class="celda-fecha">
+                    {{ formatearFecha(registro.fechaEvento) }}
+                  </span>
+                </td>
+                <td data-label="Actor">
+                  <div class="celda-principal">
+                    <strong>{{ nombreActor(registro) }}</strong>
+                    <span>{{ correoActor(registro) }}</span>
+                  </div>
+                </td>
+                <td data-label="Acción">
+                  <span [class]="claseAccion(registro.accion)">
+                    {{ registro.accion }}
+                  </span>
+                </td>
+                <td data-label="Entidad">
+                  <div class="celda-principal">
+                    <strong>{{ registro.entidadAfectada }}</strong>
+                    <span [title]="registro.idEntidadAfectada ?? ''">
+                      {{ idCorto(registro.idEntidadAfectada) }}
+                    </span>
+                  </div>
+                </td>
+                <td data-label="Detalle">
+                  @if (registro.detalle) {
+                    <details class="detalle-json">
+                      <summary>Ver detalle</summary>
+                      <pre>{{ detalleJson(registro) }}</pre>
+                    </details>
+                  } @else {
+                    <span class="text-muted">Sin detalle</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="auditoria-footer">
+        <span>
+          Mostrando {{ auditoriaFiltrada().length }} de {{ auditoria().length }} eventos.
+        </span>
+        <span class="auditoria-footer__auto"> Se actualiza automáticamente cada 15 segundos. </span>
+      </div>
+    }
+  </article>
+</section>
+
+@if (modalCrearAbierto()) {
+  <div class="modal-backdrop" (click)="cerrarModalCrear()">
+    <div
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-crear-titulo"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">Nueva cuenta</span>
+          <h2 id="modal-crear-titulo">Crear administrador</h2>
+          <p>
+            La cuenta se creará activa, con los roles ADMIN y CLIENTE, y podrá iniciar sesión de
+            inmediato.
+          </p>
+        </div>
+        <button
+          class="modal__close"
+          type="button"
+          (click)="cerrarModalCrear()"
+          aria-label="Cerrar formulario"
+          [disabled]="creando()"
+        >
+          ×
+        </button>
+      </div>
+
+      <form [formGroup]="formCrear" (ngSubmit)="crearAdmin()" novalidate>
+        <div class="modal__body">
+          @if (errorCrear()) {
+            <div class="alert alert--error" role="alert">{{ errorCrear() }}</div>
+          }
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="admin-nombres">Nombres</label>
+              <input
+                id="admin-nombres"
+                type="text"
+                formControlName="nombres"
+                autocomplete="given-name"
+                placeholder="María"
+                [class.invalid]="!!mensajeCrear('nombres')"
+              />
+              @if (mensajeCrear('nombres')) {
+                <span class="field__error">{{ mensajeCrear('nombres') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="admin-apellidos">Apellidos</label>
+              <input
+                id="admin-apellidos"
+                type="text"
+                formControlName="apellidos"
+                autocomplete="family-name"
+                placeholder="Quispe"
+                [class.invalid]="!!mensajeCrear('apellidos')"
+              />
+              @if (mensajeCrear('apellidos')) {
+                <span class="field__error">{{ mensajeCrear('apellidos') }}</span>
+              }
+            </div>
+
+            <div class="field full">
+              <label for="admin-correo">Correo electrónico</label>
+              <input
+                id="admin-correo"
+                type="email"
+                formControlName="correo"
+                autocomplete="email"
+                placeholder="admin@arreglaloya.bo"
+                [class.invalid]="!!mensajeCrear('correo')"
+              />
+              @if (mensajeCrear('correo')) {
+                <span class="field__error">{{ mensajeCrear('correo') }}</span>
+              }
+            </div>
+
+            <div class="field full">
+              <label for="admin-telefono">Teléfono</label>
+              <input
+                id="admin-telefono"
+                type="tel"
+                formControlName="telefono"
+                autocomplete="tel"
+                placeholder="71234567"
+                [class.invalid]="!!mensajeCrear('telefono')"
+              />
+              @if (mensajeCrear('telefono')) {
+                <span class="field__error">{{ mensajeCrear('telefono') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="admin-contrasena">Contraseña</label>
+              <input
+                id="admin-contrasena"
+                type="password"
+                formControlName="contrasena"
+                autocomplete="new-password"
+                placeholder="Mínimo 8 caracteres"
+                [class.invalid]="!!mensajeCrear('contrasena')"
+              />
+              @if (mensajeCrear('contrasena')) {
+                <span class="field__error">{{ mensajeCrear('contrasena') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="admin-confirmar">Confirmar contraseña</label>
+              <input
+                id="admin-confirmar"
+                type="password"
+                formControlName="confirmarContrasena"
+                autocomplete="new-password"
+                placeholder="Repite la contraseña"
+                [class.invalid]="
+                  !!mensajeCrear('confirmarContrasena') || contrasenasCrearNoCoinciden()
+                "
+              />
+              @if (mensajeCrear('confirmarContrasena')) {
+                <span class="field__error">
+                  {{ mensajeCrear('confirmarContrasena') }}
+                </span>
+              } @else if (contrasenasCrearNoCoinciden()) {
+                <span class="field__error">Las contraseñas no coinciden.</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            (click)="cerrarModalCrear()"
+            [disabled]="creando()"
+          >
+            Cancelar
+          </button>
+          <button class="btn btn--primary" type="submit" [disabled]="creando()">
+            @if (creando()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            {{ creando() ? 'Creando cuenta…' : 'Crear administrador' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+@if (modalEditarAbierto()) {
+  <div class="modal-backdrop" (click)="cerrarModalEditar()">
+    <div
+      class="modal modal--wide"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-editar-titulo"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">Gestionar cuenta</span>
+          <h2 id="modal-editar-titulo">
+            {{ adminSeleccionado()?.nombres }}
+            {{ adminSeleccionado()?.apellidos }}
+          </h2>
+          <p>{{ adminSeleccionado()?.correo }}</p>
+        </div>
+        <button
+          class="modal__close"
+          type="button"
+          (click)="cerrarModalEditar()"
+          aria-label="Cerrar formulario"
+          [disabled]="guardandoAdmin()"
+        >
+          ×
+        </button>
+      </div>
+
+      <form [formGroup]="formEditar" (ngSubmit)="guardarAdmin()" novalidate>
+        <div class="modal__body">
+          @if (errorEditar()) {
+            <div class="alert alert--error" role="alert">{{ errorEditar() }}</div>
+          }
+
+          <div class="admin-resumen">
+            <div>
+              <span class="admin-resumen__label">Rol activo</span>
+              <span [class]="claseRol(adminSeleccionado()?.rolActivo)">
+                {{ adminSeleccionado()?.rolActivo }}
+              </span>
+            </div>
+            <div>
+              <span class="admin-resumen__label">Estado</span>
+              <span [class]="claseEstado(adminSeleccionado()?.estado ?? 'ACTIVO')">
+                {{ adminSeleccionado()?.estado }}
+              </span>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="editar-nombres">Nombres</label>
+              <input
+                id="editar-nombres"
+                type="text"
+                formControlName="nombres"
+                autocomplete="given-name"
+                [class.invalid]="!!mensajeEditar('nombres')"
+              />
+              @if (mensajeEditar('nombres')) {
+                <span class="field__error">{{ mensajeEditar('nombres') }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="editar-apellidos">Apellidos</label>
+              <input
+                id="editar-apellidos"
+                type="text"
+                formControlName="apellidos"
+                autocomplete="family-name"
+                [class.invalid]="!!mensajeEditar('apellidos')"
+              />
+              @if (mensajeEditar('apellidos')) {
+                <span class="field__error">{{ mensajeEditar('apellidos') }}</span>
+              }
+            </div>
+
+            <div class="field full">
+              <label for="editar-correo">Correo electrónico</label>
+              <input
+                id="editar-correo"
+                type="email"
+                formControlName="correo"
+                autocomplete="email"
+                [class.invalid]="!!mensajeEditar('correo')"
+              />
+              @if (mensajeEditar('correo')) {
+                <span class="field__error">{{ mensajeEditar('correo') }}</span>
+              }
+            </div>
+
+            <div class="field full">
+              <label for="editar-telefono">Teléfono</label>
+              <input
+                id="editar-telefono"
+                type="tel"
+                formControlName="telefono"
+                autocomplete="tel"
+                [class.invalid]="!!mensajeEditar('telefono')"
+              />
+              @if (mensajeEditar('telefono')) {
+                <span class="field__error">{{ mensajeEditar('telefono') }}</span>
+              }
+            </div>
+          </div>
+
+          <fieldset class="roles-fieldset" formGroupName="roles">
+            <legend>Roles de la cuenta</legend>
+            <p class="field__hint">
+              Los permisos se derivan del rol activo. Marca todos los roles que debe poseer esta
+              cuenta.
+            </p>
+
+            <div class="roles-grid">
+              @for (rol of rolesDisponibles; track rol) {
+                <label
+                  class="role-checkbox"
+                  [class.role-checkbox--bloqueado]="
+                    esPropio(adminSeleccionado()) && rol === 'SUPERADMIN'
+                  "
+                >
+                  <input type="checkbox" [formControlName]="rol" />
+                  <span>{{ rol }}</span>
+                </label>
+              }
+            </div>
+
+            @if (esPropio(adminSeleccionado())) {
+              <p class="field__hint roles-fieldset__aviso">
+                No puedes quitarte tu propio rol SUPERADMIN ni desactivar tu cuenta.
+              </p>
+            }
+          </fieldset>
+        </div>
+
+        <div class="modal__footer">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            (click)="cerrarModalEditar()"
+            [disabled]="guardandoAdmin()"
+          >
+            Cancelar
+          </button>
+          <button class="btn btn--primary" type="submit" [disabled]="guardandoAdmin()">
+            @if (guardandoAdmin()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            {{ guardandoAdmin() ? 'Guardando cambios…' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

@@ -1,0 +1,79 @@
+<header class="navbar">
+  <div class="navbar__inner">
+    <a routerLink="/profile" class="navbar__brand" (click)="cerrarMenu()">
+      <span class="navbar__logo-mark" aria-hidden="true">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.7-2.7 2.3-2.3z"
+          />
+        </svg>
+      </span>
+      <span class="navbar__brand-text">Arréglalo <strong>Ya</strong></span>
+    </a>
+
+    <button
+      class="navbar__toggle"
+      type="button"
+      (click)="alternarMenu()"
+      [attr.aria-expanded]="menuAbierto()"
+      aria-label="Abrir menú de navegación"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav
+      class="navbar__nav"
+      [class.navbar__nav--abierto]="menuAbierto()"
+      aria-label="Navegación principal"
+    >
+      <div class="navbar__links">
+        <a routerLink="/profile" routerLinkActive="activo" (click)="cerrarMenu()"> Mi perfil </a>
+        @if (auth.esSuperadmin()) {
+          <a routerLink="/superadmin" routerLinkActive="activo" (click)="cerrarMenu()">
+            Superadministración
+          </a>
+        }
+      </div>
+
+      <div class="navbar__user">
+        @if (auth.usuario(); as usuario) {
+          <div class="navbar__identity">
+            <span class="navbar__name">{{ usuario.nombres }} {{ usuario.apellidos }}</span>
+            <span [class]="claseRol(usuario.rolActivo)">{{ usuario.rolActivo }}</span>
+          </div>
+        }
+
+        @if (auth.puedeAlternarRol()) {
+          <button
+            class="btn btn--ghost btn--sm"
+            type="button"
+            (click)="cambiarRol()"
+            [disabled]="cambiandoRol()"
+          >
+            @if (cambiandoRol()) {
+              <span class="spinner spinner--dark" aria-hidden="true"></span>
+            }
+            {{ cambiandoRol() ? 'Cambiando…' : 'Cambiar a ' + rolOpuesto() }}
+          </button>
+        }
+
+        <button class="btn btn--danger-ghost btn--sm" type="button" (click)="salir()">
+          Cerrar sesión
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  @if (errorRol()) {
+    <div class="navbar__error" role="alert">{{ errorRol() }}</div>
+  }
+</header>
