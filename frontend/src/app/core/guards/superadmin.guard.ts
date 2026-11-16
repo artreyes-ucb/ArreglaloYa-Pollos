@@ -10,7 +10,7 @@ export const superadminGuard: CanActivateFn = () => {
     return router.createUrlTree(['/login']);
   }
 
-  if (!auth.esSuperadmin()) {
+  if (!auth.esAdminOSuperadmin()) {
     return router.createUrlTree(['/profile']);
   }
 

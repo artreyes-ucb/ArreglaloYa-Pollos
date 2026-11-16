@@ -2,10 +2,15 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Usuario } from './usuario.entity';
+import { Zona } from './zona.entity';
+import { ServicioTrabajador } from './servicio-trabajador.entity';
 
 @Entity('perfiles_trabajador')
 export class PerfilTrabajador {
@@ -22,6 +27,7 @@ export class PerfilTrabajador {
   @Column({ name: 'anos_experiencia', type: 'int', default: 0 })
   anosExperiencia: number;
 
+  // Campo heredado del esquema inicial. No se devuelve en perfiles públicos.
   @Column({
     name: 'documento_identidad',
     type: 'varchar',
@@ -30,6 +36,7 @@ export class PerfilTrabajador {
   })
   documentoIdentidad: string | null;
 
+  // Solo se incluye en la respuesta del propio trabajador, nunca en la pública.
   @Column({
     name: 'datos_bancarios',
     type: 'varchar',
@@ -46,10 +53,17 @@ export class PerfilTrabajador {
   })
   estadoValidacion: string;
 
-  @Column({
-    name: 'fecha_validacion',
-    type: 'timestamp',
-    nullable: true,
-  })
+  @Column({ name: 'fecha_validacion', type: 'timestamp', nullable: true })
   fechaValidacion: Date | null;
+
+  @OneToMany(() => ServicioTrabajador, (servicio) => servicio.perfil)
+  servicios: ServicioTrabajador[];
+
+  @ManyToMany(() => Zona)
+  @JoinTable({
+    name: 'trabajador_zonas',
+    joinColumn: { name: 'id_perfil', referencedColumnName: 'idPerfil' },
+    inverseJoinColumn: { name: 'id_zona', referencedColumnName: 'idZona' },
+  })
+  zonas: Zona[];
 }

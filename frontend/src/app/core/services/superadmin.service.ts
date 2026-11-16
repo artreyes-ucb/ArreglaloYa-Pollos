@@ -8,6 +8,9 @@ import {
   RegistroAuditoria,
   UpdateAdminPayload,
   Usuario,
+  PerfilTrabajadorPendiente,
+  PerfilTrabajadorRevision,
+  ValidarPerfilTrabajadorPayload,
 } from '../models/auth.models';
 
 @Injectable({ providedIn: 'root' })
@@ -33,5 +36,26 @@ export class SuperadminService {
 
   listarAuditoria(): Observable<RegistroAuditoria[]> {
     return this.http.get<RegistroAuditoria[]>(`${this.baseUrl}/audit-logs`);
+  }
+  listarPerfilesPendientes(): Observable<PerfilTrabajadorPendiente[]> {
+    return this.http.get<PerfilTrabajadorPendiente[]>(
+      `${environment.apiUrl}/workers/admin/pending`,
+    );
+  }
+
+  obtenerPerfilParaRevision(idPerfil: string): Observable<PerfilTrabajadorRevision> {
+    return this.http.get<PerfilTrabajadorRevision>(
+      `${environment.apiUrl}/workers/admin/${idPerfil}`,
+    );
+  }
+
+  validarPerfil(
+    idPerfil: string,
+    payload: ValidarPerfilTrabajadorPayload,
+  ): Observable<unknown> {
+    return this.http.patch(
+      `${environment.apiUrl}/workers/admin/${idPerfil}/validation`,
+      payload,
+    );
   }
 }

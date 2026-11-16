@@ -37,6 +37,11 @@
     >
       <div class="navbar__links">
         <a routerLink="/profile" routerLinkActive="activo" (click)="cerrarMenu()"> Mi perfil </a>
+        @if (auth.usuario()?.rolActivo === 'TRABAJADOR') {
+          <a routerLink="/worker-agenda" routerLinkActive="activo" (click)="cerrarMenu()">
+            Mi agenda
+          </a>
+        }
         @if (auth.esSuperadmin()) {
           <a routerLink="/superadmin" routerLinkActive="activo" (click)="cerrarMenu()">
             Superadministración

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { superadminGuard } from './core/guards/superadmin.guard';
+import { workerGuard } from './core/guards/worker.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'profile' },
@@ -29,6 +30,13 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/profile/profile.component').then((m) => m.ProfileComponent),
+  },
+  {
+    path: 'worker-agenda',
+    title: 'Mi disponibilidad y agenda · Arréglalo Ya',
+    canActivate: [authGuard, workerGuard],
+    loadComponent: () =>
+      import('./pages/worker-agenda/worker-agenda.component').then((m) => m.WorkerAgendaComponent),
   },
   {
     path: 'superadmin',

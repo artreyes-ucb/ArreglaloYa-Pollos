@@ -97,3 +97,28 @@ export interface RegistroAuditoria {
   fechaEvento: string;
   actor: ActorAuditoria | null;
 }
+export type EstadoValidacionTrabajador =
+  | 'PENDIENTE'
+  | 'APROBADO'
+  | 'RECHAZADO';
+
+export interface PerfilTrabajadorPendiente {
+  idPerfil: string;
+  nombres: string;
+  apellidos: string;
+  correo: string;
+  estadoValidacion: EstadoValidacionTrabajador;
+}
+
+export interface PerfilTrabajadorRevision extends PerfilTrabajadorPendiente {
+  telefono: string;
+  descripcion: string | null;
+  anosExperiencia: number;
+  documentoIdentidad: string;
+  fechaValidacion: string | null;
+}
+
+export interface ValidarPerfilTrabajadorPayload {
+  estado: 'APROBADO' | 'RECHAZADO';
+  observacion?: string;
+}
