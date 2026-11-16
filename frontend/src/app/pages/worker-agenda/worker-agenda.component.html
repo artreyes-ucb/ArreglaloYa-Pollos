@@ -1,0 +1,63 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <span class="eyebrow">Panel del trabajador</span>
+      <h1>Mi disponibilidad y agenda</h1>
+      <p class="page__subtitle">Define los días y horarios en los que puedes atender y consulta tus servicios programados.</p>
+    </div>
+  </header>
+
+  @if (error()) { <div class="alert alert--error" role="alert">{{ error() }}</div> }
+  @if (exito()) { <div class="alert alert--success" role="status">{{ exito() }}</div> }
+
+  <article class="card worker-card">
+    <div class="card__header"><div><h2>Disponibilidad semanal</h2><p>Activa los días en los que recibes servicios y define tu horario.</p></div></div>
+    <div class="card__body">
+      @if (cargando()) { <p>Cargando disponibilidad y agenda…</p> }
+      <div class="days-list">
+        @for (dia of dias(); track dia.diaSemana) {
+          <div class="day-row">
+            <label class="day-toggle"><input type="checkbox" [checked]="dia.disponible" (change)="actualizarDia(dia.diaSemana, { disponible: $any($event.target).checked })" /><strong>{{ dia.nombre }}</strong></label>
+            <label>Desde <input type="time" [value]="dia.horaInicio" [disabled]="!dia.disponible" (change)="actualizarDia(dia.diaSemana, { horaInicio: $any($event.target).value })" /></label>
+            <label>Hasta <input type="time" [value]="dia.horaFin" [disabled]="!dia.disponible" (change)="actualizarDia(dia.diaSemana, { horaFin: $any($event.target).value })" /></label>
+          </div>
+        }
+      </div>
+      <div class="actions"><button class="btn btn--primary" type="button" [disabled]="guardando() || cargando()" (click)="guardarDisponibilidad()">{{ guardando() ? 'Guardando…' : 'Guardar disponibilidad' }}</button></div>
+    </div>
+  </article>
+
+  <article class="card worker-card">
+    <div class="card__header"><div><h2>Programar un servicio</h2><p>Ingresa el identificador de una solicitud activa para reservar un horario.</p></div></div>
+    <div class="card__body">
+      <form [formGroup]="formulario" (ngSubmit)="programar()" class="schedule-form">
+        <label> ID de solicitud (UUID) <input type="text" formControlName="idSolicitud" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></label>
+        <label>Fecha <input type="date" formControlName="fechaServicio" [min]="hoy" /></label>
+        <label>Hora de inicio <input type="time" formControlName="horaInicio" /></label>
+        <label>Hora de fin <input type="time" formControlName="horaFin" /></label>
+        <button class="btn btn--primary" type="submit" [disabled]="programando()">{{ programando() ? 'Programando…' : 'Programar servicio' }}</button>
+      </form>
+      <p class="form-hint">El servidor comprobará que tu perfil esté aprobado, que la solicitud siga activa, que el horario esté dentro de tu disponibilidad y que no exista un cruce con otro servicio.</p>
+    </div>
+  </article>
+
+  <article class="card worker-card">
+    <div class="card__header"><div><h2>Mi agenda</h2><p>Servicios ordenados por fecha y hora.</p></div><button class="btn btn--ghost btn--sm" type="button" (click)="cargarDatos()">Actualizar</button></div>
+    <div class="card__body">
+      @if (agenda().length === 0) { <p class="empty-state">Todavía no tienes servicios programados.</p> }
+      @else {
+        <div class="agenda-list">
+          @for (item of agenda(); track item.idProgramacion) {
+            <article class="agenda-item">
+              <div><strong>{{ item.fechaServicio | date:'longDate' }}</strong><span>{{ item.horaInicio.slice(0,5) }} – {{ item.horaFin.slice(0,5) }} · {{ item.estado }}</span></div>
+              <p>{{ item.solicitud.descripcion }}</p>
+              <small>{{ item.solicitud.ubicacionGeneral }}</small>
+              @if (item.solicitud.cliente) { <small>Cliente: {{ item.solicitud.cliente.nombres }} {{ item.solicitud.cliente.apellidos }}</small> }
+              <small>Solicitud: {{ item.solicitud.idSolicitud }}</small>
+            </article>
+          }
+        </div>
+      }
+    </div>
+  </article>
+</section>
