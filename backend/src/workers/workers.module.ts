@@ -7,6 +7,8 @@ import { PerfilTrabajador } from '../entities/perfil-trabajador.entity';
 import { ServicioTrabajador } from '../entities/servicio-trabajador.entity';
 import { Zona } from '../entities/zona.entity';
 import { WorkersController } from './workers.controller';
+import { DisponibilidadTrabajador } from '../entities/disponibilidad-trabajador.entity';
+import { ServicioProgramado } from '../entities/servicio-programado.entity';
 import { WorkersService } from './workers.service';
 
 @Module({
@@ -14,6 +16,8 @@ import { WorkersService } from './workers.service';
     TypeOrmModule.forFeature([
       PerfilTrabajador,
       ServicioTrabajador,
+DisponibilidadTrabajador,
+ServicioProgramado,
       CategoriaServicio,
       Zona,
     ]),

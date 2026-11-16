@@ -11,7 +11,12 @@ import { PerfilTrabajador } from '../entities/perfil-trabajador.entity';
 import { ServicioTrabajador } from '../entities/servicio-trabajador.entity';
 import { Zona } from '../entities/zona.entity';
 import { UpdatePerfilTrabajadorDto } from './dto/update-perfil-trabajador.dto';
-
+import { ValidarPerfilTrabajadorDto } from './dto/validar-perfil-trabajador.dto';
+import { DisponibilidadTrabajador } from '../entities/disponibilidad-trabajador.entity';
+import { ServicioProgramado } from '../entities/servicio-programado.entity';
+import { SolicitudServicio } from '../entities/solicitud-servicio.entity';
+import { GuardarDisponibilidadDto } from './dto/guardar-disponibilidad.dto';
+import { ProgramarServicioDto } from './dto/programar-servicio.dto';
 const RELACIONES_PERFIL = {
   usuario: true,
   servicios: { categoria: true },
@@ -198,4 +203,359 @@ export class WorkersService {
       })),
     };
   }
+
+async listarPerfilesPendientes() {
+  const perfiles = await this.dataSource.getRepository(PerfilTrabajador).find({
+    where: { estadoValidacion: 'PENDIENTE' },
+    relations: { usuario: true },
+    order: { idPerfil: 'ASC' },
+  });
+
+  return perfiles.map((perfil) => ({
+    idPerfil: perfil.idPerfil,
+    nombres: perfil.usuario.nombres,
+    apellidos: perfil.usuario.apellidos,
+    correo: perfil.usuario.correo,
+    estadoValidacion: perfil.estadoValidacion,
+  }));
+}
+
+async obtenerPerfilParaRevision(idPerfil: string) {
+  const perfil = await this.dataSource.getRepository(PerfilTrabajador).findOne({
+    where: { idPerfil },
+    relations: { usuario: true },
+  });
+
+  if (!perfil) {
+    throw new NotFoundException('Perfil de trabajador no encontrado');
+  }
+
+  return {
+    idPerfil: perfil.idPerfil,
+    nombres: perfil.usuario.nombres,
+    apellidos: perfil.usuario.apellidos,
+    correo: perfil.usuario.correo,
+    telefono: perfil.usuario.telefono,
+    descripcion: perfil.descripcion,
+    anosExperiencia: perfil.anosExperiencia,
+    documentoIdentidad: perfil.documentoIdentidad,
+    estadoValidacion: perfil.estadoValidacion,
+    fechaValidacion: perfil.fechaValidacion,
+  };
+}
+
+async validarPerfil(
+  idAdmin: string,
+  idPerfil: string,
+  dto: ValidarPerfilTrabajadorDto,
+) {
+  const perfilRepository = this.dataSource.getRepository(PerfilTrabajador);
+
+  const perfil = await perfilRepository.findOne({
+    where: { idPerfil },
+    relations: { usuario: true },
+  });
+
+  if (!perfil) {
+    throw new NotFoundException('Perfil de trabajador no encontrado');
+  }
+
+  if (perfil.estadoValidacion !== 'PENDIENTE') {
+    throw new BadRequestException(
+      'Solo se pueden validar perfiles pendientes',
+    );
+  }
+
+  if (
+    dto.estado === 'RECHAZADO' &&
+    !dto.observacion?.trim()
+  ) {
+    throw new BadRequestException(
+      'Debe indicar una observación para rechazar el perfil',
+    );
+  }
+
+  perfil.estadoValidacion = dto.estado;
+  perfil.fechaValidacion = new Date();
+
+  await perfilRepository.save(perfil);
+
+  await this.auditService.registrarEvento(
+    idAdmin,
+    `PERFIL_TRABAJADOR_${dto.estado}`,
+    'perfiles_trabajador',
+    perfil.idPerfil,
+    {
+      estadoAnterior: 'PENDIENTE',
+      estadoNuevo: dto.estado,
+      observacion: dto.observacion?.trim() || null,
+    },
+  );
+
+  return {
+    mensaje: `Perfil de trabajador ${dto.estado.toLowerCase()} correctamente`,
+    idPerfil: perfil.idPerfil,
+    estadoValidacion: perfil.estadoValidacion,
+    fechaValidacion: perfil.fechaValidacion,
+  };
+}
+async guardarDisponibilidad(
+  idUsuario: string,
+  dto: GuardarDisponibilidadDto,
+) {
+  if (dto.horaInicio >= dto.horaFin) {
+    throw new BadRequestException(
+      'La hora de fin debe ser posterior a la hora de inicio',
+    );
+  }
+
+  const perfil = await this.dataSource
+    .getRepository(PerfilTrabajador)
+    .findOne({
+      where: { usuario: { idUsuario } },
+    });
+
+  if (!perfil) {
+    throw new NotFoundException('No se encontró el perfil de trabajador');
+  }
+
+  if (perfil.estadoValidacion !== 'APROBADO') {
+    throw new BadRequestException(
+      'El perfil debe estar aprobado para gestionar disponibilidad',
+    );
+  }
+
+  const repository = this.dataSource.getRepository(DisponibilidadTrabajador);
+
+  const existente = await repository.findOne({
+    where: {
+      perfil: { idPerfil: perfil.idPerfil },
+      diaSemana: dto.diaSemana,
+    },
+  });
+
+  const disponibilidad = repository.create({
+    ...(existente ? { idDisponibilidad: existente.idDisponibilidad } : {}),
+    perfil,
+    diaSemana: dto.diaSemana,
+    horaInicio: dto.horaInicio,
+    horaFin: dto.horaFin,
+    disponible: dto.disponible ?? true,
+  });
+
+  const guardado = await repository.save(disponibilidad);
+
+  await this.auditService.registrarEvento(
+    idUsuario,
+    'ACTUALIZACION_DISPONIBILIDAD_TRABAJADOR',
+    'disponibilidad_trabajador',
+    guardado.idDisponibilidad,
+    {
+      diaSemana: dto.diaSemana,
+      horaInicio: dto.horaInicio,
+      horaFin: dto.horaFin,
+      disponible: guardado.disponible,
+    },
+  );
+
+  return {
+    mensaje: 'Disponibilidad guardada correctamente',
+    disponibilidad: guardado,
+  };
+}
+async obtenerMiDisponibilidad(idUsuario: string) {
+  const perfil = await this.dataSource
+    .getRepository(PerfilTrabajador)
+    .findOne({
+      where: { usuario: { idUsuario } },
+    });
+
+  if (!perfil) {
+    throw new NotFoundException('No se encontró el perfil de trabajador');
+  }
+
+  return this.dataSource
+    .getRepository(DisponibilidadTrabajador)
+    .find({
+      where: { perfil: { idPerfil: perfil.idPerfil } },
+      order: { diaSemana: 'ASC' },
+    });
+}
+
+async programarServicio(
+  idUsuario: string,
+  dto: ProgramarServicioDto,
+) {
+  if (dto.horaInicio >= dto.horaFin) {
+    throw new BadRequestException(
+      'La hora de fin debe ser posterior a la hora de inicio',
+    );
+  }
+
+  return this.dataSource.transaction(async (manager) => {
+    const perfil = await manager
+      .getRepository(PerfilTrabajador)
+      .findOne({
+        where: { usuario: { idUsuario } },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+    if (!perfil) {
+      throw new NotFoundException(
+        'No se encontró el perfil de trabajador',
+      );
+    }
+
+    if (perfil.estadoValidacion !== 'APROBADO') {
+      throw new BadRequestException(
+        'El perfil debe estar aprobado para programar servicios',
+      );
+    }
+
+    const solicitud = await manager
+      .getRepository(SolicitudServicio)
+      .findOne({
+        where: { idSolicitud: dto.idSolicitud },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+    if (!solicitud) {
+      throw new NotFoundException('Solicitud no encontrada');
+    }
+
+    if (solicitud.estado !== 'ACTIVA') {
+      throw new BadRequestException(
+        'La solicitud ya no está disponible para programar',
+      );
+    }
+
+    const fecha = new Date(`${dto.fechaServicio}T12:00:00Z`);
+
+    if (
+      Number.isNaN(fecha.getTime()) ||
+      fecha.toISOString().slice(0, 10) !== dto.fechaServicio
+    ) {
+      throw new BadRequestException('La fecha del servicio no es válida');
+    }
+
+    const diaSemana = ((fecha.getUTCDay() + 6) % 7) + 1;
+
+    const disponibilidad = await manager
+      .getRepository(DisponibilidadTrabajador)
+      .findOne({
+        where: {
+          perfil: { idPerfil: perfil.idPerfil },
+          diaSemana,
+          disponible: true,
+        },
+      });
+
+    if (!disponibilidad) {
+      throw new BadRequestException(
+        'El trabajador no tiene disponibilidad ese día',
+      );
+    }
+
+    if (
+      dto.horaInicio < disponibilidad.horaInicio ||
+      dto.horaFin > disponibilidad.horaFin
+    ) {
+      throw new BadRequestException(
+        'El horario solicitado está fuera de la disponibilidad del trabajador',
+      );
+    }
+
+    if (dto.fechaServicio < new Date().toISOString().slice(0, 10)) {
+      throw new BadRequestException(
+        'No se pueden programar servicios en fechas pasadas',
+      );
+    }
+
+    const conflicto = await manager
+      .getRepository(ServicioProgramado)
+      .createQueryBuilder('programacion')
+      .where('programacion.id_perfil = :idPerfil', {
+        idPerfil: perfil.idPerfil,
+      })
+      .andWhere('programacion.fecha_servicio = :fecha', {
+        fecha: dto.fechaServicio,
+      })
+      .andWhere('programacion.estado != :cancelado', {
+        cancelado: 'CANCELADO',
+      })
+      .andWhere('programacion.hora_inicio < :horaFin', {
+        horaFin: dto.horaFin,
+      })
+      .andWhere('programacion.hora_fin > :horaInicio', {
+        horaInicio: dto.horaInicio,
+      })
+      .getOne();
+
+    if (conflicto) {
+      throw new BadRequestException(
+        'El trabajador ya tiene otro servicio programado en ese horario',
+      );
+    }
+
+    const programacionRepository = manager.getRepository(ServicioProgramado);
+
+    const programacion = programacionRepository.create({
+      solicitud,
+      perfil,
+      fechaServicio: dto.fechaServicio,
+      horaInicio: dto.horaInicio,
+      horaFin: dto.horaFin,
+      estado: 'PROGRAMADO',
+    });
+
+    const guardado = await programacionRepository.save(programacion);
+
+    solicitud.estado = 'PROGRAMADA';
+    await manager.getRepository(SolicitudServicio).save(solicitud);
+
+    await this.auditService.registrarEvento(
+      idUsuario,
+      'SERVICIO_PROGRAMADO',
+      'servicios_programados',
+      guardado.idProgramacion,
+      {
+        idSolicitud: solicitud.idSolicitud,
+        fechaServicio: dto.fechaServicio,
+        horaInicio: dto.horaInicio,
+        horaFin: dto.horaFin,
+      },
+    );
+
+    return {
+      mensaje: 'Servicio programado correctamente',
+      programacion: guardado,
+    };
+  });
+}
+
+async obtenerMiAgenda(idUsuario: string) {
+  const perfil = await this.dataSource
+    .getRepository(PerfilTrabajador)
+    .findOne({
+      where: { usuario: { idUsuario } },
+    });
+
+  if (!perfil) {
+    throw new NotFoundException(
+      'No se encontró el perfil de trabajador',
+    );
+  }
+
+  return this.dataSource
+    .getRepository(ServicioProgramado)
+    .find({
+      where: { perfil: { idPerfil: perfil.idPerfil } },
+      relations: { solicitud: true },
+      order: {
+        fechaServicio: 'ASC',
+        horaInicio: 'ASC',
+      },
+    });
+}
+
 }

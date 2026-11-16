@@ -16,6 +16,8 @@ import { SeedModule } from './seed/seed.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
 import { UsersModule } from './users/users.module';
 import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
+import { DisponibilidadTrabajador } from './entities/disponibilidad-trabajador.entity';
+import { ServicioProgramado } from './entities/servicio-programado.entity';
 import { WorkersModule } from './workers/workers.module';
 
 @Module({
@@ -37,6 +39,8 @@ import { WorkersModule } from './workers/workers.module';
           Zona,
           PerfilTrabajador,
           ServicioTrabajador,
+DisponibilidadTrabajador,
+ServicioProgramado,
           SolicitudServicio,
           Pago,
         ],
