@@ -48,14 +48,14 @@ export class WorkersController {
   }
   @Get('admin/pending')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Rol.ADMIN)
+  @Roles(Rol.ADMIN, Rol.SUPERADMIN)
   listarPerfilesPendientes() {
     return this.workersService.listarPerfilesPendientes();
   }
 
   @Get('admin/:idPerfil')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Rol.ADMIN)
+  @Roles(Rol.ADMIN, Rol.SUPERADMIN)
   obtenerPerfilParaRevision(
     @Param('idPerfil', new ParseUUIDPipe()) idPerfil: string,
   ) {
@@ -64,7 +64,7 @@ export class WorkersController {
 
   @Patch('admin/:idPerfil/validation')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Rol.ADMIN)
+  @Roles(Rol.ADMIN, Rol.SUPERADMIN)
   validarPerfil(
     @CurrentUser() usuario: Usuario,
     @Param('idPerfil', new ParseUUIDPipe()) idPerfil: string,

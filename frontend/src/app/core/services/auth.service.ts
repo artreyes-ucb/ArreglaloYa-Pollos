@@ -39,6 +39,11 @@ export class AuthService {
    */
   readonly esSuperadmin = computed(() => this._usuario()?.rolActivo === 'SUPERADMIN');
 
+  readonly esAdminOSuperadmin = computed(() => {
+  const rol = this._usuario()?.rolActivo;
+  return rol === 'ADMIN' || rol === 'SUPERADMIN';
+});
+
   readonly esCuentaAdministrativa = computed(() => {
     const roles = this._usuario()?.roles ?? [];
     return roles.includes('ADMIN') || roles.includes('SUPERADMIN');

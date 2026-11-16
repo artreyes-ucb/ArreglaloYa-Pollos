@@ -124,6 +124,190 @@
     </article>
   </div>
 
+
+  <article class="card seccion">
+    <div class="card__header">
+      <div>
+        <h2>Perfiles de trabajadores pendientes</h2>
+        <p>Revisa la información profesional y aprueba o rechaza las solicitudes de registro como trabajador.</p>
+      </div>
+
+      <button
+        class="btn btn--secondary btn--sm"
+        type="button"
+        (click)="cargarPerfilesPendientes()"
+        [disabled]="cargandoPerfiles()"
+      >
+        @if (cargandoPerfiles()) {
+          <span class="spinner spinner--dark" aria-hidden="true"></span>
+        }
+        Actualizar
+      </button>
+    </div>
+
+    @if (errorPerfiles()) {
+      <div class="alert alert--error" role="alert">{{ errorPerfiles() }}</div>
+    }
+
+    @if (cargandoPerfiles() && perfilesPendientes().length === 0) {
+      <div class="empty-state">
+        <span class="spinner spinner--dark" aria-hidden="true"></span>
+        <strong>Cargando perfiles pendientes…</strong>
+      </div>
+    } @else if (perfilesPendientes().length === 0) {
+      <div class="empty-state">
+        <strong>No hay perfiles pendientes</strong>
+        <p>Las solicitudes de trabajadores que necesiten revisión aparecerán aquí.</p>
+      </div>
+    } @else {
+      <div class="tabla-wrap">
+        <table class="tabla tabla--apilable">
+          <thead>
+            <tr>
+              <th scope="col">Trabajador</th>
+              <th scope="col">Correo</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (perfil of perfilesPendientes(); track perfil.idPerfil) {
+              <tr>
+                <td data-label="Trabajador">
+                  <strong>{{ perfil.nombres }} {{ perfil.apellidos }}</strong>
+                </td>
+                <td data-label="Correo">{{ perfil.correo }}</td>
+                <td data-label="Estado">
+                  <span class="badge badge--neutral">{{ perfil.estadoValidacion }}</span>
+                </td>
+                <td data-label="Acciones">
+                  <button
+                    class="btn btn--secondary btn--sm"
+                    type="button"
+                    (click)="revisarPerfil(perfil.idPerfil)"
+                  >
+                    Revisar perfil
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </article>
+
+  @if (cargandoDetallePerfil()) {
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal__body">
+          <span class="spinner spinner--dark" aria-hidden="true"></span>
+          Cargando información del trabajador…
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (perfilEnRevision(); as perfil) {
+    <div class="modal-backdrop" (click)="cerrarRevision()">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="revision-perfil-titulo"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="modal__header">
+          <div>
+            <span class="eyebrow">Validación de trabajador</span>
+            <h2 id="revision-perfil-titulo">
+              {{ perfil.nombres }} {{ perfil.apellidos }}
+            </h2>
+            <p>{{ perfil.correo }}</p>
+          </div>
+          <button
+            class="modal__close"
+            type="button"
+            (click)="cerrarRevision()"
+            [disabled]="procesandoValidacion()"
+            aria-label="Cerrar revisión"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="modal__body">
+          @if (errorPerfiles()) {
+            <div class="alert alert--error" role="alert">{{ errorPerfiles() }}</div>
+          }
+
+          <div class="admin-resumen">
+            <div>
+              <span class="admin-resumen__label">Teléfono</span>
+              <strong>{{ perfil.telefono }}</strong>
+            </div>
+            <div>
+              <span class="admin-resumen__label">Experiencia</span>
+              <strong>{{ perfil.anosExperiencia }} años</strong>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Documento de identidad</label>
+            <p>{{ perfil.documentoIdentidad }}</p>
+          </div>
+
+          <div class="field">
+            <label>Descripción profesional</label>
+            <p>{{ perfil.descripcion || 'Sin descripción' }}</p>
+          </div>
+
+          <div class="field">
+            <label for="observacion-rechazo">Observación (obligatoria para rechazar)</label>
+            <textarea
+              id="observacion-rechazo"
+              rows="3"
+              [value]="observacionRechazo()"
+              (input)="observacionRechazo.set($any($event.target).value)"
+              placeholder="Indica el motivo del rechazo si corresponde…"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button
+            class="btn btn--secondary"
+            type="button"
+            (click)="cerrarRevision()"
+            [disabled]="procesandoValidacion()"
+          >
+            Cerrar
+          </button>
+          <button
+            class="btn btn--danger"
+            type="button"
+            (click)="validarPerfil('RECHAZADO')"
+            [disabled]="procesandoValidacion()"
+          >
+            Rechazar
+          </button>
+          <button
+            class="btn btn--primary"
+            type="button"
+            (click)="validarPerfil('APROBADO')"
+            [disabled]="procesandoValidacion()"
+          >
+            @if (procesandoValidacion()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            Aprobar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+
   <article class="card seccion">
     <div class="card__header">
       <div>

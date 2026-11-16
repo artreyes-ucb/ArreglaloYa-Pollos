@@ -10,9 +10,12 @@ import {
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   EstadoAdministrable,
+  PerfilTrabajadorPendiente,
+  PerfilTrabajadorRevision,
   RegistroAuditoria,
   Rol,
   Usuario,
+  ValidarPerfilTrabajadorPayload,
 } from '../../core/models/auth.models';
 import { AuthService } from '../../core/services/auth.service';
 import { SuperadminService } from '../../core/services/superadmin.service';
@@ -43,6 +46,13 @@ export class SuperadminComponent implements OnInit, OnDestroy {
 
   protected readonly admins = signal<Usuario[]>([]);
   protected readonly auditoria = signal<RegistroAuditoria[]>([]);
+    protected readonly perfilesPendientes = signal<PerfilTrabajadorPendiente[]>([]);
+  protected readonly perfilEnRevision = signal<PerfilTrabajadorRevision | null>(null);
+  protected readonly cargandoPerfiles = signal(true);
+  protected readonly cargandoDetallePerfil = signal(false);
+  protected readonly procesandoValidacion = signal(false);
+  protected readonly errorPerfiles = signal('');
+  protected readonly observacionRechazo = signal('');
   protected readonly cargandoAdmins = signal(true);
   protected readonly cargandoAuditoria = signal(true);
   protected readonly errorAdmins = signal('');
@@ -154,14 +164,16 @@ export class SuperadminComponent implements OnInit, OnDestroy {
     return fecha ? this.formateadorHora.format(fecha) : '—';
   });
 
-  ngOnInit(): void {
+    ngOnInit(): void {
     this.cargarAdmins();
     this.cargarAuditoria();
+    this.cargarPerfilesPendientes();
 
     this.intervaloActualizacion = setInterval(() => {
       if (!document.hidden) {
         this.cargarAdmins(true);
         this.cargarAuditoria(true);
+        this.cargarPerfilesPendientes(true);
       }
     }, INTERVALO_ACTUALIZACION_MS);
   }
@@ -179,6 +191,9 @@ export class SuperadminComponent implements OnInit, OnDestroy {
     }
     if (this.modalEditarAbierto()) {
       this.cerrarModalEditar();
+    }
+    if (this.perfilEnRevision()) {
+      this.cerrarRevision();
     }
   }
 
@@ -227,10 +242,107 @@ export class SuperadminComponent implements OnInit, OnDestroy {
     });
   }
 
+  protected cargarPerfilesPendientes(silencioso = false): void {
+    if (!silencioso) {
+      this.cargandoPerfiles.set(true);
+    }
+
+    this.superadminService.listarPerfilesPendientes().subscribe({
+      next: (perfiles) => {
+        this.perfilesPendientes.set(perfiles);
+        this.cargandoPerfiles.set(false);
+        this.errorPerfiles.set('');
+      },
+      error: (error: unknown) => {
+        this.cargandoPerfiles.set(false);
+
+        if (!silencioso) {
+          this.errorPerfiles.set(
+            mensajeDeError(error, 'No se pudieron cargar los perfiles pendientes.'),
+          );
+        }
+      },
+    });
+  }
+
+  protected revisarPerfil(idPerfil: string): void {
+    this.cargandoDetallePerfil.set(true);
+    this.errorPerfiles.set('');
+    this.perfilEnRevision.set(null);
+    this.observacionRechazo.set('');
+
+    this.superadminService.obtenerPerfilParaRevision(idPerfil).subscribe({
+      next: (perfil) => {
+        this.perfilEnRevision.set(perfil);
+        this.cargandoDetallePerfil.set(false);
+      },
+      error: (error: unknown) => {
+        this.cargandoDetallePerfil.set(false);
+        this.errorPerfiles.set(
+          mensajeDeError(error, 'No se pudo cargar el perfil del trabajador.'),
+        );
+      },
+    });
+  }
+
+  protected cerrarRevision(): void {
+    if (this.procesandoValidacion()) {
+      return;
+    }
+
+    this.perfilEnRevision.set(null);
+    this.observacionRechazo.set('');
+  }
+
+  protected validarPerfil(estado: 'APROBADO' | 'RECHAZADO'): void {
+    const perfil = this.perfilEnRevision();
+
+    if (!perfil || this.procesandoValidacion()) {
+      return;
+    }
+
+    const observacion = this.observacionRechazo().trim();
+
+    if (estado === 'RECHAZADO' && !observacion) {
+      this.errorPerfiles.set('Debes indicar el motivo del rechazo.');
+      return;
+    }
+
+    const payload: ValidarPerfilTrabajadorPayload = {
+      estado,
+      ...(estado === 'RECHAZADO' ? { observacion } : {}),
+    };
+
+    this.procesandoValidacion.set(true);
+    this.errorPerfiles.set('');
+
+    this.superadminService.validarPerfil(perfil.idPerfil, payload).subscribe({
+      next: () => {
+        this.procesandoValidacion.set(false);
+        this.perfilEnRevision.set(null);
+        this.observacionRechazo.set('');
+        this.exito.set(
+          `El perfil de ${perfil.nombres} ${perfil.apellidos} fue ${
+            estado === 'APROBADO' ? 'aprobado' : 'rechazado'
+          } correctamente.`,
+        );
+        this.cargarPerfilesPendientes(true);
+        this.cargarAuditoria(true);
+      },
+      error: (error: unknown) => {
+        this.procesandoValidacion.set(false);
+        this.errorPerfiles.set(
+          mensajeDeError(error, 'No se pudo validar el perfil del trabajador.'),
+        );
+      },
+    });
+  }
+
   protected actualizarTodo(): void {
     this.exito.set('');
     this.cargarAdmins();
     this.cargarAuditoria();
+    this.cargarPerfilesPendientes();
   }
 
   protected abrirModalCrear(): void {
