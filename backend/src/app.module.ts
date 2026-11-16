@@ -15,6 +15,8 @@ import { Zona } from './entities/zona.entity';
 import { SeedModule } from './seed/seed.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
 import { UsersModule } from './users/users.module';
+import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
+import { WorkersModule } from './workers/workers.module';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { UsersModule } from './users/users.module';
           CategoriaServicio,
           Zona,
           PerfilTrabajador,
+          ServicioTrabajador,
           SolicitudServicio,
           Pago,
         ],
@@ -46,6 +49,7 @@ import { UsersModule } from './users/users.module';
     AuditModule,
     AuthModule,
     UsersModule,
+    WorkersModule,
     SuperadminModule,
     SeedModule,
   ],

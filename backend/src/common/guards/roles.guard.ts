@@ -30,11 +30,8 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('No hay un usuario autenticado');
     }
 
-    const autorizado = rolesRequeridos.some(
-      (rol) =>
-        usuario.rolActivo === rol ||
-        (Array.isArray(usuario.roles) && usuario.roles.includes(rol)),
-    );
+    // La autorización depende del rol activo, no de todos los roles asignados.
+    const autorizado = rolesRequeridos.includes(usuario.rolActivo);
 
     if (!autorizado) {
       throw new ForbiddenException(
