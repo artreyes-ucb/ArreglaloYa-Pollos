@@ -19,9 +19,11 @@
 
   @if (estadoValidacion() && estadoValidacion() !== 'APROBADO') {
     <div class="alert alert--warning" role="status">
-      Tu perfil profesional se encuentra en estado <strong>{{ estadoValidacion() }}</strong>.
-      Puedes explorar solicitudes disponibles, pero necesitas validación administrativa aprobada
-      para contactar clientes por WhatsApp o prestar servicios.
+      <span>
+        Tu perfil profesional se encuentra en estado <strong>{{ estadoValidacion() }}</strong>.
+        Puedes explorar solicitudes disponibles, pero necesitas validación administrativa aprobada
+        para contactar clientes por WhatsApp o prestar servicios.
+      </span>
     </div>
   }
 

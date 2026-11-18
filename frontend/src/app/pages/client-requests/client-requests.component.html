@@ -168,9 +168,11 @@
 
           @if (sol.programacion) {
             <div class="alert alert--info request-card__notice">
-              Servicio programado con <strong>{{ sol.programacion.trabajadorNombre }}</strong> el
-              {{ sol.programacion.fechaServicio }} ({{ sol.programacion.horaInicio.slice(0, 5) }} -
-              {{ sol.programacion.horaFin.slice(0, 5) }}).
+              <span>
+                Servicio programado con <strong>{{ sol.programacion.trabajadorNombre }}</strong> el
+                {{ sol.programacion.fechaServicio }} ({{ sol.programacion.horaInicio.slice(0, 5) }} -
+                {{ sol.programacion.horaFin.slice(0, 5) }}).
+              </span>
             </div>
           }
 
@@ -531,8 +533,10 @@
           }
 
           <div class="alert alert--warning">
-            Esta acción marcará la solicitud como <strong>Cancelada</strong> y dejará de estar
-            disponible para nuevos trabajadores. El historial se conservará para trazabilidad.
+            <span>
+              Esta acción marcará la solicitud como <strong>Cancelada</strong> y dejará de estar
+              disponible para nuevos trabajadores. El historial se conservará para trazabilidad.
+            </span>
           </div>
 
           <div class="field">

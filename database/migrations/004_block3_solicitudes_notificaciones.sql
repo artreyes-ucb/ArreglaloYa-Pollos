@@ -45,3 +45,22 @@ CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario_fecha
 
 CREATE INDEX IF NOT EXISTS idx_notificaciones_usuario_leida
     ON notificaciones(id_usuario, leida);
+
+-- Corrección idempotente de codificación UTF-8 en semillas si 01_init fue ejecutado con WIN1252 en Windows.
+UPDATE categorias_servicio
+SET nombre = U&'Plomer\00EDa',
+    descripcion = U&'Reparaci\00F3n de tuber\00EDas, grifer\00EDa y filtraciones'
+WHERE nombre LIKE U&'Plomer%\00C3%';
+
+UPDATE categorias_servicio
+SET descripcion = U&'Instalaciones el\00E9ctricas, cortocircuitos y tableros'
+WHERE nombre = 'Electricidad' AND descripcion LIKE U&'%\00C3%';
+
+UPDATE categorias_servicio
+SET nombre = U&'Alba\00F1iler\00EDa'
+WHERE nombre LIKE U&'Alba%\00C3%';
+
+UPDATE categorias_servicio
+SET nombre = U&'Electrodom\00E9sticos',
+    descripcion = U&'Mantenimiento y reparaci\00F3n de l\00EDnea blanca'
+WHERE nombre LIKE U&'Electrodom%\00C3%';
