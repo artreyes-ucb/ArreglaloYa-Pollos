@@ -8,6 +8,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Rol } from '../common/enums/rol.enum';
@@ -19,6 +20,8 @@ import { UpdateAdminEstadoDto } from './dto/update-admin-estado.dto';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import { SuperadminService } from './superadmin.service';
 
+@ApiTags('Superadministración')
+@ApiBearerAuth()
 @Controller('superadmin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Rol.SUPERADMIN)
@@ -26,16 +29,19 @@ export class SuperadminController {
   constructor(private readonly superadminService: SuperadminService) {}
 
   @Get('admins')
+  @ApiOperation({ summary: 'Listar cuentas administrativas (CU-24)' })
   listarAdmins() {
     return this.superadminService.listarAdmins();
   }
 
   @Post('admins')
+  @ApiOperation({ summary: 'Crear nueva cuenta de administrador (CU-24)' })
   crearAdmin(@CurrentUser() actor: Usuario, @Body() dto: CreateAdminDto) {
     return this.superadminService.crearAdmin(actor, dto);
   }
 
   @Patch('admins/:id/estado')
+  @ApiOperation({ summary: 'Activar o desactivar cuenta administrativa (CU-24)' })
   cambiarEstadoAdmin(
     @CurrentUser() actor: Usuario,
     @Param('id', ParseUUIDPipe) id: string,
@@ -47,6 +53,7 @@ export class SuperadminController {
   }
 
   @Patch('admins/:id')
+  @ApiOperation({ summary: 'Actualizar datos, roles o estado de administrador (CU-24)' })
   actualizarAdmin(
     @CurrentUser() actor: Usuario,
     @Param('id', ParseUUIDPipe) id: string,
@@ -56,6 +63,7 @@ export class SuperadminController {
   }
 
   @Get('audit-logs')
+  @ApiOperation({ summary: 'Consultar historial inmutable de auditoría (HU-F22)' })
   listarAuditoria() {
     return this.superadminService.listarAuditoria();
   }

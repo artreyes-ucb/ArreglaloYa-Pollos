@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { clientGuard } from './core/guards/client.guard';
 import { superadminGuard } from './core/guards/superadmin.guard';
 import { workerGuard } from './core/guards/worker.guard';
 
@@ -32,11 +33,38 @@ export const routes: Routes = [
       import('./pages/profile/profile.component').then((m) => m.ProfileComponent),
   },
   {
+    path: 'requests',
+    title: 'Mis solicitudes · Arréglalo Ya',
+    canActivate: [authGuard, clientGuard],
+    loadComponent: () =>
+      import('./pages/client-requests/client-requests.component').then(
+        (m) => m.ClientRequestsComponent,
+      ),
+  },
+  {
+    path: 'worker-requests',
+    title: 'Buscar solicitudes · Arréglalo Ya',
+    canActivate: [authGuard, workerGuard],
+    loadComponent: () =>
+      import('./pages/worker-requests/worker-requests.component').then(
+        (m) => m.WorkerRequestsComponent,
+      ),
+  },
+  {
     path: 'worker-agenda',
     title: 'Mi disponibilidad y agenda · Arréglalo Ya',
     canActivate: [authGuard, workerGuard],
     loadComponent: () =>
       import('./pages/worker-agenda/worker-agenda.component').then((m) => m.WorkerAgendaComponent),
+  },
+  {
+    path: 'notifications',
+    title: 'Notificaciones · Arréglalo Ya',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/notifications/notifications.component').then(
+        (m) => m.NotificationsComponent,
+      ),
   },
   {
     path: 'superadmin',
