@@ -1,0 +1,325 @@
+<section class="page">
+  <div class="page__header">
+    <div>
+      <span class="eyebrow">Buscador de oportunidades · CU-13 y HU-F05</span>
+      <h1>Solicitudes de servicio disponibles</h1>
+      <p class="page__subtitle">
+        Filtra solicitudes activas por especialidad y zona de atención. El sistema prioriza las
+        oportunidades que coinciden con tu perfil profesional y oculta direcciones exactas privadas.
+      </p>
+    </div>
+
+    <div class="page__actions">
+      <span class="chip">Resultados: {{ totalResultados() }}</span>
+      <button class="btn btn--secondary btn--sm" type="button" (click)="buscar()">
+        Actualizar listado
+      </button>
+    </div>
+  </div>
+
+  @if (estadoValidacion() && estadoValidacion() !== 'APROBADO') {
+    <div class="alert alert--warning" role="status">
+      <span>
+        Tu perfil profesional se encuentra en estado <strong>{{ estadoValidacion() }}</strong>.
+        Puedes explorar solicitudes disponibles, pero necesitas validación administrativa aprobada
+        para contactar clientes por WhatsApp o prestar servicios.
+      </span>
+    </div>
+  }
+
+  @if (errorCarga()) {
+    <div class="alert alert--error" role="alert">{{ errorCarga() }}</div>
+  }
+
+  @if (errorWhatsapp()) {
+    <div class="alert alert--error" role="alert">{{ errorWhatsapp() }}</div>
+  }
+
+  <form class="card search-card" [formGroup]="filtrosForm" (ngSubmit)="buscar()">
+    <div class="card__body stack">
+      <div class="search-grid">
+        <div class="field">
+          <label for="busq-categoria">Especialidad / Categoría</label>
+          <select id="busq-categoria" formControlName="idCategoria" (change)="buscar()">
+            <option [value]="0">Todas las especialidades</option>
+            @for (cat of categorias(); track cat.idCategoria) {
+              <option [value]="cat.idCategoria">{{ cat.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="busq-zona">Zona de atención</label>
+          <select id="busq-zona" formControlName="idZona" (change)="buscar()">
+            <option [value]="0">Todas las zonas</option>
+            @for (z of zonas(); track z.idZona) {
+              <option [value]="z.idZona">{{ z.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="busq-texto">Palabra clave</label>
+          <input
+            id="busq-texto"
+            type="search"
+            formControlName="q"
+            placeholder="Ej. fuga, grifo, tablero, ducha..."
+          />
+        </div>
+      </div>
+
+      <div class="search-footer">
+        <label class="role-checkbox search-match-toggle">
+          <input
+            type="checkbox"
+            formControlName="soloMisCoincidencias"
+            (change)="buscar()"
+          />
+          <span>Solo mostrar coincidencias con mis especialidades o zonas</span>
+        </label>
+
+        <div class="inline-stack">
+          <button type="button" class="btn btn--ghost btn--sm" (click)="limpiarFiltros()">
+            Limpiar filtros
+          </button>
+          <button type="submit" class="btn btn--primary btn--sm" [disabled]="cargando()">
+            Buscar
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  @if (cargando()) {
+    <div class="card">
+      <div class="card__body empty-state">
+        <span class="spinner spinner--dark" aria-hidden="true"></span>
+        <p>Buscando solicitudes compatibles…</p>
+      </div>
+    </div>
+  } @else if (solicitudes().length === 0) {
+    <div class="card">
+      <div class="card__body empty-state">
+        <strong>No se encontraron solicitudes coincidentes</strong>
+        <p>
+          Prueba modificando la especialidad, zona o desactivando el filtro de coincidencias para
+          ver oportunidades en otras zonas.
+        </p>
+        <button type="button" class="btn btn--secondary btn--sm" (click)="limpiarFiltros()">
+          Ver todas las solicitudes activas
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="results-grid">
+      @for (sol of solicitudes(); track sol.idSolicitud) {
+        <article
+          class="card opportunity-card"
+          [class.opportunity-card--reduced]="sol.prioridadReducida"
+        >
+          <div class="opportunity-card__head">
+            <div class="inline-stack">
+              <span class="chip chip--cliente">{{ sol.categoria?.nombre ?? 'Servicio' }}</span>
+              <span class="chip">{{ sol.zona?.nombre ?? 'Sin zona' }}</span>
+              <span class="opportunity-ref">#{{ sol.referencia }}</span>
+            </div>
+            <span [class]="claseEstado(sol.estado)">{{ etiquetaEstado(sol.estado) }}</span>
+          </div>
+
+          @if (sol.coincideEspecialidad || sol.coincideZona) {
+            <div class="match-badges">
+              @if (sol.coincideEspecialidad) {
+                <span class="chip chip--trabajador">✓ Coincide con tu especialidad</span>
+              }
+              @if (sol.coincideZona) {
+                <span class="chip chip--trabajador">✓ Coincide con tu zona</span>
+              }
+            </div>
+          }
+
+          <p class="opportunity-card__desc">{{ sol.descripcion }}</p>
+
+          <dl class="opportunity-meta">
+            <div>
+              <dt>Cliente</dt>
+              <dd>{{ sol.clienteNombrePublico }}</dd>
+            </div>
+            <div>
+              <dt>Ubicación general</dt>
+              <dd>{{ sol.ubicacionGeneral }}</dd>
+            </div>
+            <div>
+              <dt>Fecha preferida</dt>
+              <dd>{{ sol.fechaPreferida ? (sol.fechaPreferida | date: 'dd/MM/yyyy') : 'Flexible' }}</dd>
+            </div>
+            <div>
+              <dt>Vigencia</dt>
+              <dd>{{ sol.diasRestantes }} día(s) restantes</dd>
+            </div>
+          </dl>
+
+          @if (sol.fotografias.length > 0) {
+            <div class="photo-strip">
+              @for (foto of sol.fotografias; track foto.rutaImagen) {
+                <a
+                  class="photo-thumb"
+                  [href]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [title]="foto.descripcion || 'Ver fotografía'"
+                >
+                  <img
+                    [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                    [alt]="foto.descripcion || 'Fotografía de referencia'"
+                  />
+                </a>
+              }
+            </div>
+          }
+
+          <div class="opportunity-card__actions">
+            <button
+              type="button"
+              class="btn btn--secondary btn--sm"
+              (click)="abrirDetalle(sol)"
+            >
+              Ver detalle
+            </button>
+
+            <button
+              type="button"
+              class="btn btn--whatsapp btn--sm"
+              (click)="abrirWhatsapp(sol)"
+              [disabled]="cargandoWhatsapp()"
+            >
+              Contactar por WhatsApp
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<!-- Modal Detalle Solicitud para Trabajador -->
+@if (detalleSolicitud(); as sol) {
+  <div class="modal-backdrop" (click)="cerrarDetalle()">
+    <div
+      class="modal modal--wide"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">Solicitud #{{ sol.referencia }}</span>
+          <h2>{{ sol.categoria?.nombre ?? 'Servicio' }} · {{ sol.zona?.nombre ?? '' }}</h2>
+          <p>Publicada el {{ sol.fechaPublicacion | date: 'dd/MM/yyyy HH:mm' }} por {{ sol.clienteNombrePublico }}</p>
+        </div>
+        <button class="modal__close" type="button" (click)="cerrarDetalle()" aria-label="Cerrar">
+          ×
+        </button>
+      </div>
+
+      <div class="modal__body stack">
+        <div class="inline-stack">
+          <span [class]="claseEstado(sol.estado)">{{ etiquetaEstado(sol.estado) }}</span>
+          <span class="chip">Fecha preferida: {{ sol.fechaPreferida ? (sol.fechaPreferida | date: 'dd/MM/yyyy') : 'Flexible' }}</span>
+          <span class="chip">{{ sol.diasRestantes }} día(s) restantes</span>
+        </div>
+
+        <div>
+          <h3 class="detail-heading">Descripción del trabajo</h3>
+          <p class="mb-0">{{ sol.descripcion }}</p>
+        </div>
+
+        <div>
+          <h3 class="detail-heading">Ubicación general</h3>
+          <p class="mb-0">{{ sol.ubicacionGeneral }}</p>
+          <span class="field__hint">
+            La dirección exacta del cliente está protegida (RNF-02) y se comparte únicamente cuando
+            corresponda para la atención del servicio.
+          </span>
+        </div>
+
+        @if (sol.fotografias.length > 0) {
+          <div>
+            <h3 class="detail-heading">Fotografías de referencia</h3>
+            <div class="photo-gallery">
+              @for (foto of sol.fotografias; track foto.rutaImagen) {
+                <figure class="photo-gallery__item">
+                  <a
+                    [href]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                      [alt]="foto.descripcion || 'Fotografía'"
+                    />
+                  </a>
+                  @if (foto.descripcion) {
+                    <figcaption>{{ foto.descripcion }}</figcaption>
+                  }
+                </figure>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="modal__footer">
+        <button type="button" class="btn btn--secondary" (click)="cerrarDetalle()">Cerrar</button>
+        <button
+          type="button"
+          class="btn btn--whatsapp"
+          (click)="cerrarDetalle(); abrirWhatsapp(sol)"
+        >
+          Contactar por WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal Advertencia WhatsApp (CU-25 / HU-F20 / RNF-09) -->
+@if (whatsappModal(); as wa) {
+  <div class="modal-backdrop" (click)="cerrarWhatsapp()">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">CU-25 · Canal externo</span>
+          <h2>Contactar a {{ wa.destinatarioNombre }} por WhatsApp</h2>
+        </div>
+        <button class="modal__close" type="button" (click)="cerrarWhatsapp()" aria-label="Cerrar">
+          ×
+        </button>
+      </div>
+
+      <div class="modal__body stack">
+        <div class="alert alert--warning" role="alert">
+          {{ wa.advertencia }}
+        </div>
+
+        <div class="wa-preview">
+          <span class="field__hint">Mensaje prellenado (solicitud #{{ wa.referenciaSolicitud }}):</span>
+          <p class="mb-0">{{ wa.mensajePrellenado }}</p>
+        </div>
+      </div>
+
+      <div class="modal__footer">
+        <button type="button" class="btn btn--secondary" (click)="cerrarWhatsapp()">Cancelar</button>
+        <a
+          class="btn btn--whatsapp"
+          [href]="wa.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          (click)="cerrarWhatsapp()"
+        >
+          Abrir en WhatsApp ↗
+        </a>
+      </div>
+    </div>
+  </div>
+}

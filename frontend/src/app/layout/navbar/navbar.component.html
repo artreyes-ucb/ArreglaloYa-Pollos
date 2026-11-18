@@ -37,11 +37,32 @@
     >
       <div class="navbar__links">
         <a routerLink="/profile" routerLinkActive="activo" (click)="cerrarMenu()"> Mi perfil </a>
+        @if (auth.usuario()?.rolActivo === 'CLIENTE') {
+          <a routerLink="/requests" routerLinkActive="activo" (click)="cerrarMenu()">
+            Mis solicitudes
+          </a>
+        }
         @if (auth.usuario()?.rolActivo === 'TRABAJADOR') {
+          <a routerLink="/worker-requests" routerLinkActive="activo" (click)="cerrarMenu()">
+            Buscar solicitudes
+          </a>
           <a routerLink="/worker-agenda" routerLinkActive="activo" (click)="cerrarMenu()">
             Mi agenda
           </a>
         }
+        <a
+          routerLink="/notifications"
+          routerLinkActive="activo"
+          class="navbar__notif-link"
+          (click)="cerrarMenu()"
+        >
+          Avisos
+          @if (notifications.totalNoLeidas() > 0) {
+            <span class="navbar__notif-badge" aria-label="Notificaciones sin leer">
+              {{ notifications.totalNoLeidas() > 99 ? '99+' : notifications.totalNoLeidas() }}
+            </span>
+          }
+        </a>
         @if (auth.esSuperadmin()) {
           <a routerLink="/superadmin" routerLinkActive="activo" (click)="cerrarMenu()">
             Superadministración

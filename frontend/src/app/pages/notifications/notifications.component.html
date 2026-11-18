@@ -1,0 +1,119 @@
+<section class="page">
+  <div class="page__header">
+    <div>
+      <span class="eyebrow">Centro de avisos · HU-F21 y CU-25</span>
+      <h1>Notificaciones internas</h1>
+      <p class="page__subtitle">
+        Consulta eventos clave sobre tus solicitudes, cambios de estado, oportunidades compatibles
+        y avisos de vigencia dentro de Arréglalo Ya.
+      </p>
+    </div>
+
+    <div class="page__actions">
+      <button class="btn btn--secondary btn--sm" type="button" (click)="cargar()">
+        Actualizar
+      </button>
+      @if (notificationsService.totalNoLeidas() > 0) {
+        <button
+          class="btn btn--primary btn--sm"
+          type="button"
+          (click)="marcarTodasLeidas()"
+          [disabled]="procesando()"
+        >
+          Marcar todas como leídas ({{ notificationsService.totalNoLeidas() }})
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (mensaje()) {
+    <div class="alert alert--success" role="status">{{ mensaje() }}</div>
+  }
+
+  @if (error()) {
+    <div class="alert alert--error" role="alert">{{ error() }}</div>
+  }
+
+  <div class="notif-filters">
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="!soloNoLeidas()"
+      (click)="cambiarFiltro(false)"
+    >
+      Todas
+    </button>
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="soloNoLeidas()"
+      (click)="cambiarFiltro(true)"
+    >
+      Solo no leídas ({{ notificationsService.totalNoLeidas() }})
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <div class="card">
+      <div class="card__body empty-state">
+        <span class="spinner spinner--dark" aria-hidden="true"></span>
+        <p>Cargando notificaciones…</p>
+      </div>
+    </div>
+  } @else if (notificaciones().length === 0) {
+    <div class="card">
+      <div class="card__body empty-state">
+        <strong>No tienes avisos pendientes</strong>
+        <p>
+          Cuando se publiquen solicitudes compatibles o cambie el estado de una solicitud tuya,
+          verás las notificaciones aquí.
+        </p>
+      </div>
+    </div>
+  } @else {
+    <div class="notif-list">
+      @for (item of notificaciones(); track item.idNotificacion) {
+        <article class="card notif-item" [class.notif-item--unread]="!item.leida">
+          <div class="notif-item__main">
+            <div class="notif-item__top">
+              <div class="inline-stack">
+                @if (!item.leida) {
+                  <span class="unread-dot" aria-label="Sin leer"></span>
+                }
+                <span [class]="claseTipo(item.tipo)">{{ etiquetaTipo(item.tipo) }}</span>
+                <strong class="notif-item__title">{{ item.titulo }}</strong>
+              </div>
+              <span class="notif-item__date">{{ item.fechaEnvio | date: 'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+
+            <p class="notif-item__msg">{{ item.mensaje }}</p>
+          </div>
+
+          <div class="notif-item__actions">
+            @if (item.entidadRelacionada === 'solicitudes_servicio') {
+              <button
+                type="button"
+                class="btn btn--secondary btn--sm"
+                (click)="abrirReferencia(item)"
+              >
+                Ir a solicitudes
+              </button>
+            }
+
+            @if (!item.leida) {
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                (click)="marcarLeida(item)"
+              >
+                Marcar como leída
+              </button>
+            } @else {
+              <span class="notif-read-tag">Leída</span>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>

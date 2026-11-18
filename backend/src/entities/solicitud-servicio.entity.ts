@@ -4,9 +4,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { CategoriaServicio } from './categoria-servicio.entity';
+import { FotografiaSolicitud } from './fotografia-solicitud.entity';
+import { HistorialSolicitud } from './historial-solicitud.entity';
 import { Usuario } from './usuario.entity';
 import { Zona } from './zona.entity';
 
@@ -57,4 +60,10 @@ export class SolicitudServicio {
     nullable: true,
   })
   fechaVencimiento: Date | null;
+
+  @OneToMany(() => FotografiaSolicitud, (foto) => foto.solicitud)
+  fotografias?: FotografiaSolicitud[];
+
+  @OneToMany(() => HistorialSolicitud, (evento) => evento.solicitud)
+  historial?: HistorialSolicitud[];
 }

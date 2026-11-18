@@ -6,12 +6,17 @@ import { AppService } from './app.service';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriaServicio } from './entities/categoria-servicio.entity';
+import { FotografiaSolicitud } from './entities/fotografia-solicitud.entity';
+import { HistorialSolicitud } from './entities/historial-solicitud.entity';
+import { Notificacion } from './entities/notificacion.entity';
 import { Pago } from './entities/pago.entity';
 import { PerfilTrabajador } from './entities/perfil-trabajador.entity';
 import { RegistroAuditoria } from './entities/registro-auditoria.entity';
 import { SolicitudServicio } from './entities/solicitud-servicio.entity';
 import { Usuario } from './entities/usuario.entity';
 import { Zona } from './entities/zona.entity';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RequestsModule } from './requests/requests.module';
 import { SeedModule } from './seed/seed.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
 import { UsersModule } from './users/users.module';
@@ -39,9 +44,12 @@ import { WorkersModule } from './workers/workers.module';
           Zona,
           PerfilTrabajador,
           ServicioTrabajador,
-DisponibilidadTrabajador,
-ServicioProgramado,
+          DisponibilidadTrabajador,
+          ServicioProgramado,
           SolicitudServicio,
+          FotografiaSolicitud,
+          HistorialSolicitud,
+          Notificacion,
           Pago,
         ],
         autoLoadEntities: true,
@@ -54,6 +62,8 @@ ServicioProgramado,
     AuthModule,
     UsersModule,
     WorkersModule,
+    NotificationsModule,
+    RequestsModule,
     SuperadminModule,
     SeedModule,
   ],

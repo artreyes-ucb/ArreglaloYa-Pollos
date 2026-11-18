@@ -1,0 +1,613 @@
+<section class="page">
+  <div class="page__header">
+    <div>
+      <span class="eyebrow">Panel del cliente · CU-01 y CU-14</span>
+      <h1>Mis solicitudes de servicio</h1>
+      <p class="page__subtitle">
+        Publica tus necesidades domésticas con fotografías opcionales, revisa su vigencia (3 días
+        sin respuesta / 30 días máximo) y modifícalas o cancélalas antes de la contratación.
+      </p>
+    </div>
+
+    <div class="page__actions">
+      <button class="btn btn--secondary btn--sm" type="button" (click)="cargarSolicitudes()">
+        Actualizar
+      </button>
+      <button class="btn btn--primary" type="button" (click)="abrirNuevaSolicitud()">
+        + Nueva solicitud
+      </button>
+    </div>
+  </div>
+
+  @if (mensajeExito()) {
+    <div class="alert alert--success" role="status">{{ mensajeExito() }}</div>
+  }
+
+  @if (errorCarga()) {
+    <div class="alert alert--error" role="alert">{{ errorCarga() }}</div>
+  }
+
+  <div class="stats-grid">
+    <article class="stat-card">
+      <span class="stat-card__label">Total</span>
+      <strong class="stat-card__value">{{ resumenEstados().total }}</strong>
+    </article>
+    <article class="stat-card stat-card--success">
+      <span class="stat-card__label">Activas</span>
+      <strong class="stat-card__value">{{ resumenEstados().activas }}</strong>
+    </article>
+    <article class="stat-card stat-card--warning">
+      <span class="stat-card__label">Prioridad reducida</span>
+      <strong class="stat-card__value">{{ resumenEstados().prioridadReducida }}</strong>
+    </article>
+    <article class="stat-card stat-card--info">
+      <span class="stat-card__label">Programadas / Contratadas</span>
+      <strong class="stat-card__value">{{ resumenEstados().programadas }}</strong>
+    </article>
+  </div>
+
+  <div class="filter-bar">
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="filtroEstado() === ''"
+      (click)="seleccionarFiltro('')"
+    >
+      Todas ({{ resumenEstados().total }})
+    </button>
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="filtroEstado() === 'ACTIVA'"
+      (click)="seleccionarFiltro('ACTIVA')"
+    >
+      Activas
+    </button>
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="filtroEstado() === 'PRIORIDAD_REDUCIDA'"
+      (click)="seleccionarFiltro('PRIORIDAD_REDUCIDA')"
+    >
+      Prioridad reducida
+    </button>
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="filtroEstado() === 'PROGRAMADA'"
+      (click)="seleccionarFiltro('PROGRAMADA')"
+    >
+      Programadas
+    </button>
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="filtroEstado() === 'CANCELADA'"
+      (click)="seleccionarFiltro('CANCELADA')"
+    >
+      Canceladas
+    </button>
+    <button
+      type="button"
+      class="filter-pill"
+      [class.filter-pill--activo]="filtroEstado() === 'VENCIDA'"
+      (click)="seleccionarFiltro('VENCIDA')"
+    >
+      Vencidas
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <div class="card">
+      <div class="card__body empty-state">
+        <span class="spinner spinner--dark" aria-hidden="true"></span>
+        <p>Cargando tus solicitudes…</p>
+      </div>
+    </div>
+  } @else if (solicitudesFiltradas().length === 0) {
+    <div class="card">
+      <div class="card__body empty-state">
+        <strong>No hay solicitudes para mostrar</strong>
+        <p>
+          Publica una nueva solicitud de plomería, electricidad, albañilería o electrodomésticos
+          para que los trabajadores de tu zona puedan cotizarla.
+        </p>
+        <button class="btn btn--primary btn--sm" type="button" (click)="abrirNuevaSolicitud()">
+          Publicar mi primera solicitud
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="requests-grid">
+      @for (sol of solicitudesFiltradas(); track sol.idSolicitud) {
+        <article class="card request-card">
+          <div class="request-card__top">
+            <div class="inline-stack">
+              <span class="chip chip--cliente">{{ sol.categoria?.nombre ?? 'Servicio' }}</span>
+              <span class="chip">{{ sol.zona?.nombre ?? 'Sin zona' }}</span>
+              <span class="request-ref">#{{ sol.referencia }}</span>
+            </div>
+            <span [class]="claseEstado(sol.estado)">{{ etiquetaEstado(sol.estado) }}</span>
+          </div>
+
+          <p class="request-card__desc">{{ sol.descripcion }}</p>
+
+          <dl class="request-meta">
+            <div>
+              <dt>Ubicación general</dt>
+              <dd>{{ sol.ubicacionGeneral }}</dd>
+            </div>
+            <div>
+              <dt>Fecha preferida</dt>
+              <dd>{{ sol.fechaPreferida ? (sol.fechaPreferida | date: 'dd/MM/yyyy') : 'Flexible' }}</dd>
+            </div>
+            <div>
+              <dt>Publicada</dt>
+              <dd>{{ sol.fechaPublicacion | date: 'dd/MM/yyyy HH:mm' }}</dd>
+            </div>
+            <div>
+              <dt>Vigencia (máx. 30 días)</dt>
+              <dd>
+                @if (sol.estado === 'VENCIDA') {
+                  Caducada
+                } @else if (sol.estado === 'CANCELADA') {
+                  Cancelada
+                } @else {
+                  {{ sol.diasRestantes }} día(s) restantes
+                }
+              </dd>
+            </div>
+          </dl>
+
+          @if (sol.prioridadReducida) {
+            <div class="alert alert--warning request-card__notice">
+              Esta solicitud superó los 3 días sin respuesta y perdió prioridad en el buscador.
+              Puedes editar sus detalles o cancelarla si ya no la necesitas.
+            </div>
+          }
+
+          @if (sol.programacion) {
+            <div class="alert alert--info request-card__notice">
+              <span>
+                Servicio programado con <strong>{{ sol.programacion.trabajadorNombre }}</strong> el
+                {{ sol.programacion.fechaServicio }} ({{ sol.programacion.horaInicio.slice(0, 5) }} -
+                {{ sol.programacion.horaFin.slice(0, 5) }}).
+              </span>
+            </div>
+          }
+
+          @if (sol.fotografias.length > 0) {
+            <div class="photo-strip">
+              @for (foto of sol.fotografias; track foto.rutaImagen) {
+                <a
+                  class="photo-thumb"
+                  [href]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [title]="foto.descripcion || 'Ver fotografía'"
+                >
+                  <img
+                    [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                    [alt]="foto.descripcion || 'Fotografía de solicitud'"
+                  />
+                </a>
+              }
+            </div>
+          }
+
+          <div class="request-card__actions">
+            <button
+              type="button"
+              class="btn btn--secondary btn--sm"
+              (click)="abrirDetalle(sol)"
+              [disabled]="cargandoDetalle()"
+            >
+              Detalle e historial
+            </button>
+
+            @if (sol.puedeModificar) {
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm"
+                (click)="abrirEditarSolicitud(sol)"
+              >
+                Modificar
+              </button>
+            }
+
+            @if (sol.puedeCancelar) {
+              <button
+                type="button"
+                class="btn btn--danger-ghost btn--sm"
+                (click)="abrirCancelar(sol)"
+              >
+                Cancelar
+              </button>
+            }
+
+            @if (sol.programacion) {
+              <button
+                type="button"
+                class="btn btn--whatsapp btn--sm"
+                (click)="abrirWhatsapp(sol)"
+                [disabled]="cargandoWhatsapp()"
+              >
+                WhatsApp
+              </button>
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<!-- Modal Crear / Modificar Solicitud (CU-01 / CU-14) -->
+@if (modalFormAbierto()) {
+  <div class="modal-backdrop" (click)="cerrarModalForm()">
+    <div
+      class="modal modal--wide"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">{{ editandoId() ? 'CU-14 · Editar' : 'CU-01 · Publicar' }}</span>
+          <h2>{{ editandoId() ? 'Modificar solicitud de servicio' : 'Nueva solicitud de servicio' }}</h2>
+          <p>
+            Completa la información necesaria para que los trabajadores de tu zona comprendan el
+            trabajo requerido.
+          </p>
+        </div>
+        <button class="modal__close" type="button" (click)="cerrarModalForm()" aria-label="Cerrar">
+          ×
+        </button>
+      </div>
+
+      <form [formGroup]="formulario" (ngSubmit)="guardarSolicitud()">
+        <div class="modal__body stack">
+          @if (errorForm()) {
+            <div class="alert alert--error" role="alert">{{ errorForm() }}</div>
+          }
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="sol-categoria">Categoría / Especialidad *</label>
+              <select id="sol-categoria" formControlName="idCategoria">
+                <option [value]="0" disabled>Selecciona una categoría</option>
+                @for (cat of categorias(); track cat.idCategoria) {
+                  <option [value]="cat.idCategoria">{{ cat.nombre }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="sol-zona">Zona de atención *</label>
+              <select id="sol-zona" formControlName="idZona">
+                <option [value]="0" disabled>Selecciona una zona</option>
+                @for (z of zonas(); track z.idZona) {
+                  <option [value]="z.idZona">{{ z.nombre }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="sol-ubicacion">Ubicación general / Referencia *</label>
+              <input
+                id="sol-ubicacion"
+                type="text"
+                formControlName="ubicacionGeneral"
+                placeholder="Ej. Barrio Cala Cala, cerca de Av. América"
+                [class.invalid]="
+                  formulario.controls.ubicacionGeneral.touched &&
+                  formulario.controls.ubicacionGeneral.invalid
+                "
+              />
+              <span class="field__hint">
+                Por privacidad (RNF-02), indica solo una referencia general y evita publicar tu
+                dirección exacta aquí.
+              </span>
+            </div>
+
+            <div class="field">
+              <label for="sol-fecha">Fecha preferida (opcional)</label>
+              <input
+                id="sol-fecha"
+                type="date"
+                formControlName="fechaPreferida"
+                [min]="hoyIso"
+              />
+              <span class="field__hint">Si no eliges fecha, la atención quedará como flexible.</span>
+            </div>
+
+            <div class="field full">
+              <label for="sol-descripcion">Descripción del trabajo requerido *</label>
+              <textarea
+                id="sol-descripcion"
+                rows="4"
+                formControlName="descripcion"
+                placeholder="Describe el problema, materiales si los conoces o detalles importantes..."
+                [class.invalid]="
+                  formulario.controls.descripcion.touched &&
+                  formulario.controls.descripcion.invalid
+                "
+              ></textarea>
+              @if (
+                formulario.controls.descripcion.touched &&
+                formulario.controls.descripcion.invalid
+              ) {
+                <span class="field__error">
+                  Ingresa una descripción clara de al menos 10 caracteres.
+                </span>
+              }
+            </div>
+          </div>
+
+          <div class="upload-section">
+            <div class="upload-section__header">
+              <div>
+                <strong>Fotografías opcionales ({{ fotosAdjuntas().length }}/5)</strong>
+                <p class="field__hint mb-0">
+                  Formatos JPG, PNG o WEBP (máximo 5 MB por archivo).
+                </p>
+              </div>
+              <label class="btn btn--secondary btn--sm upload-btn">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  (change)="alSeleccionarArchivo($event)"
+                  [disabled]="subiendoFoto() || fotosAdjuntas().length >= 5"
+                />
+                {{ subiendoFoto() ? 'Subiendo…' : '+ Adjuntar foto' }}
+              </label>
+            </div>
+
+            @if (fotosAdjuntas().length > 0) {
+              <div class="uploaded-list">
+                @for (foto of fotosAdjuntas(); track foto.rutaImagen; let idx = $index) {
+                  <div class="uploaded-item">
+                    <img
+                      [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                      alt="Vista previa"
+                    />
+                    <input
+                      type="text"
+                      [value]="foto.descripcion ?? ''"
+                      (input)="actualizarDescripcionFoto(idx, $any($event.target).value)"
+                      placeholder="Nota opcional de la foto"
+                      maxlength="200"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn--danger-ghost btn--sm"
+                      (click)="eliminarFoto(idx)"
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button
+            type="button"
+            class="btn btn--secondary"
+            (click)="cerrarModalForm()"
+            [disabled]="guardandoForm()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="btn btn--primary"
+            [disabled]="guardandoForm() || subiendoFoto()"
+          >
+            @if (guardandoForm()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            {{ editandoId() ? 'Guardar cambios' : 'Publicar solicitud' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal Detalle e Historial -->
+@if (detalleAbierto(); as detalle) {
+  <div class="modal-backdrop" (click)="cerrarDetalle()">
+    <div
+      class="modal modal--wide"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">Solicitud #{{ detalle.referencia }}</span>
+          <h2>{{ detalle.categoria?.nombre ?? 'Servicio' }} · {{ detalle.zona?.nombre ?? '' }}</h2>
+        </div>
+        <button class="modal__close" type="button" (click)="cerrarDetalle()" aria-label="Cerrar">
+          ×
+        </button>
+      </div>
+
+      <div class="modal__body stack">
+        <div class="inline-stack">
+          <span [class]="claseEstado(detalle.estado)">{{ etiquetaEstado(detalle.estado) }}</span>
+          <span class="chip">Publicada: {{ detalle.fechaPublicacion | date: 'dd/MM/yyyy HH:mm' }}</span>
+          @if (detalle.fechaVencimiento) {
+            <span class="chip">Vence: {{ detalle.fechaVencimiento | date: 'dd/MM/yyyy' }}</span>
+          }
+        </div>
+
+        <div>
+          <h3 class="detail-heading">Descripción</h3>
+          <p class="mb-0">{{ detalle.descripcion }}</p>
+        </div>
+
+        <div>
+          <h3 class="detail-heading">Ubicación general</h3>
+          <p class="mb-0">{{ detalle.ubicacionGeneral }}</p>
+        </div>
+
+        @if (detalle.fotografias.length > 0) {
+          <div>
+            <h3 class="detail-heading">Fotografías adjuntas</h3>
+            <div class="photo-gallery">
+              @for (foto of detalle.fotografias; track foto.rutaImagen) {
+                <figure class="photo-gallery__item">
+                  <a
+                    [href]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                      [alt]="foto.descripcion || 'Fotografía'"
+                    />
+                  </a>
+                  @if (foto.descripcion) {
+                    <figcaption>{{ foto.descripcion }}</figcaption>
+                  }
+                </figure>
+              }
+            </div>
+          </div>
+        }
+
+        <div>
+          <h3 class="detail-heading">Historial de eventos</h3>
+          @if (detalle.historial.length === 0) {
+            <p class="text-muted mb-0">Sin eventos registrados.</p>
+          } @else {
+            <ul class="history-list">
+              @for (ev of detalle.historial; track ev.idEvento) {
+                <li>
+                  <div class="history-list__head">
+                    <strong>{{ etiquetaEvento(ev.tipoEvento) }}</strong>
+                    <span>{{ ev.fechaEvento | date: 'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                  <p class="field__hint mb-0">
+                    Responsable: {{ ev.actorNombre ?? 'Sistema' }}
+                    @if (ev.estadoNuevo) {
+                      · Estado: {{ etiquetaEstado(ev.estadoNuevo) }}
+                    }
+                  </p>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+
+      <div class="modal__footer">
+        <button type="button" class="btn btn--secondary" (click)="cerrarDetalle()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal Confirmar Cancelación (CU-14) -->
+@if (solicitudACancelar(); as objetivo) {
+  <div class="modal-backdrop" (click)="cerrarCancelar()">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">CU-14 · Cancelación</span>
+          <h2>Cancelar solicitud #{{ objetivo.referencia }}</h2>
+        </div>
+        <button class="modal__close" type="button" (click)="cerrarCancelar()" aria-label="Cerrar">
+          ×
+        </button>
+      </div>
+
+      <form [formGroup]="formCancelar" (ngSubmit)="confirmarCancelacion()">
+        <div class="modal__body stack">
+          @if (errorCancelar()) {
+            <div class="alert alert--error" role="alert">{{ errorCancelar() }}</div>
+          }
+
+          <div class="alert alert--warning">
+            <span>
+              Esta acción marcará la solicitud como <strong>Cancelada</strong> y dejará de estar
+              disponible para nuevos trabajadores. El historial se conservará para trazabilidad.
+            </span>
+          </div>
+
+          <div class="field">
+            <label for="cancel-motivo">Motivo de cancelación (opcional)</label>
+            <textarea
+              id="cancel-motivo"
+              rows="3"
+              formControlName="motivo"
+              placeholder="Ej. Cambiaron mis planes o ya resolví el problema..."
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button
+            type="button"
+            class="btn btn--secondary"
+            (click)="cerrarCancelar()"
+            [disabled]="cancelando()"
+          >
+            Volver
+          </button>
+          <button type="submit" class="btn btn--danger" [disabled]="cancelando()">
+            @if (cancelando()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            Confirmar cancelación
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal Advertencia WhatsApp (CU-25 / HU-F20 / RNF-09) -->
+@if (whatsappModal(); as wa) {
+  <div class="modal-backdrop" (click)="cerrarWhatsapp()">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <div>
+          <span class="eyebrow">CU-25 · Contacto externo</span>
+          <h2>Abrir WhatsApp con {{ wa.destinatarioNombre }}</h2>
+        </div>
+        <button class="modal__close" type="button" (click)="cerrarWhatsapp()" aria-label="Cerrar">
+          ×
+        </button>
+      </div>
+
+      <div class="modal__body stack">
+        <div class="alert alert--warning" role="alert">
+          {{ wa.advertencia }}
+        </div>
+
+        <div class="wa-preview">
+          <span class="field__hint">Mensaje prellenado para la solicitud #{{ wa.referenciaSolicitud }}:</span>
+          <p class="mb-0">{{ wa.mensajePrellenado }}</p>
+        </div>
+      </div>
+
+      <div class="modal__footer">
+        <button type="button" class="btn btn--secondary" (click)="cerrarWhatsapp()">Cancelar</button>
+        <a
+          class="btn btn--whatsapp"
+          [href]="wa.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          (click)="cerrarWhatsapp()"
+        >
+          Continuar a WhatsApp ↗
+        </a>
+      </div>
+    </div>
+  </div>
+}
