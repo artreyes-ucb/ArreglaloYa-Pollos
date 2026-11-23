@@ -73,5 +73,11 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/superadmin/superadmin.component').then((m) => m.SuperadminComponent),
   },
+  {
+  path: 'payments',
+  canActivate: [authGuard],
+  loadComponent: () =>
+    import('./pages/payments/payments.component').then((m) => m.PaymentsComponent),
+  },
   { path: '**', redirectTo: 'login' },
 ];

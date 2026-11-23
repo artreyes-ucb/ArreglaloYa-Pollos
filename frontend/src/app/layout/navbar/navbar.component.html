@@ -37,6 +37,9 @@
     >
       <div class="navbar__links">
         <a routerLink="/profile" routerLinkActive="activo" (click)="cerrarMenu()"> Mi perfil </a>
+        <a routerLink="/payments" routerLinkActive="activo" (click)="cerrarMenu()">
+          Servicios y Pagos
+        </a>
         @if (auth.usuario()?.rolActivo === 'CLIENTE') {
           <a routerLink="/requests" routerLinkActive="activo" (click)="cerrarMenu()">
             Mis solicitudes

@@ -63,4 +63,4 @@ WHERE nombre LIKE U&'Alba%\00C3%';
 UPDATE categorias_servicio
 SET nombre = U&'Electrodom\00E9sticos',
     descripcion = U&'Mantenimiento y reparaci\00F3n de l\00EDnea blanca'
-WHERE nombre LIKE U&'Electrodom%\00C3%';
+WHERE nombre LIKE U&'Electrodom%\00C3%';ñ

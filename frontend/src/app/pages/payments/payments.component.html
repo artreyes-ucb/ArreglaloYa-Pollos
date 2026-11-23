@@ -1,0 +1,358 @@
+<section class="page">
+  <div class="page__header">
+    <div>
+      <span class="eyebrow">Bloque 5 · Motor Económico, Cierre y Reclamos</span>
+      <h1>Servicios Contratados y Pagos</h1>
+      <p class="page__subtitle">
+        Gestiona anticipos del 25 %, confirmación bilateral de pagos, comisión del 5 %, cierre dual,
+        calificaciones y reclamos (plazo de 7 días).
+      </p>
+    </div>
+    <button class="btn btn--secondary btn--sm" type="button" (click)="cargarServicios()">
+      Actualizar
+    </button>
+  </div>
+
+  @if (mensaje()) {
+    <div class="alert alert--success" role="status">{{ mensaje() }}</div>
+  }
+  @if (error()) {
+    <div class="alert alert--error" role="alert">{{ error() }}</div>
+  }
+
+  @if (cargando()) {
+    <div class="card"><div class="card__body empty-state">Cargando servicios…</div></div>
+  } @else if (servicios().length === 0) {
+    <div class="card">
+      <div class="card__body empty-state">
+        <strong>No tienes servicios contratados o programados aún</strong>
+        <p>Cuando un trabajador programe un servicio desde su agenda, aparecerá aquí para gestionar pagos y cierre.</p>
+      </div>
+    </div>
+  } @else {
+    <div class="services-list">
+      @for (sp of servicios(); track sp.idProgramacion) {
+        <article class="card service-card">
+          <div class="service-card__header">
+            <div class="inline-stack">
+              <span class="chip chip--cliente">{{ sp.solicitud.categoria }}</span>
+              <span class="chip">{{ sp.solicitud.zona }}</span>
+              <span class="badge">{{ sp.estado }}</span>
+            </div>
+            <strong class="price-tag">
+              Precio acordado: Bs. {{ sp.precioAcordado | number: '1.2-2' }}
+            </strong>
+          </div>
+
+          <p class="service-card__desc">{{ sp.solicitud.descripcion }}</p>
+
+          <div class="meta-row">
+            <span><strong>Cliente:</strong> {{ sp.cliente.nombre }}</span>
+            <span><strong>Trabajador:</strong> {{ sp.trabajador.nombre }}</span>
+            <span><strong>Cita:</strong> {{ sp.fechaServicio }} ({{ sp.horaInicio.slice(0, 5) }} - {{ sp.horaFin.slice(0, 5) }})</span>
+          </div>
+
+          <!-- Estado de Cierre Dual (CU-06) -->
+          <div class="dual-status">
+            <span [class]="sp.marcadoTerminadoPorTrabajador ? 'badge badge--activo' : 'badge badge--neutral'">
+              Trabajador terminó: {{ sp.marcadoTerminadoPorTrabajador ? 'Sí' : 'Pendiente' }}
+            </span>
+            <span [class]="sp.confirmadoPorCliente ? 'badge badge--activo' : 'badge badge--neutral'">
+              Cliente confirmó: {{ sp.confirmadoPorCliente ? 'Sí' : 'Pendiente' }}
+            </span>
+          </div>
+
+          <!-- Pagos y Confirmación Bilateral (CU-04 / CU-18 / RNF-06) -->
+          <div class="sub-box">
+            <h3>Pagos registrados (Confirmación bilateral)</h3>
+            @if (sp.pagos.length === 0) {
+              <p class="text-muted">Sin pagos registrados. Anticipo de referencia (25 %): Bs. {{ sp.anticipoReferencia25 | number: '1.2-2' }}</p>
+            } @else {
+              @for (p of sp.pagos; track p.idPago) {
+                <div class="pago-row">
+                  <div>
+                    <strong>{{ p.tipo }}</strong> · Bs. {{ p.monto }}
+                    <span class="badge" [class.badge--activo]="p.estado === 'CONCILIADO'" [class.badge--inactivo]="p.estado === 'DISCREPANTE'">
+                      {{ p.estado }}
+                    </span>
+                    <div class="field__hint">
+                      Cliente: {{ p.confirmadoCliente ? 'Confirmó Bs. ' + p.montoReportadoCliente : 'Pendiente' }} |
+                      Trabajador: {{ p.confirmadoTrabajador ? 'Confirmó Bs. ' + p.montoReportadoTrabajador : 'Pendiente' }}
+                    </div>
+                  </div>
+                  @if ((rolActivo() === 'CLIENTE' && !p.confirmadoCliente) || (rolActivo() === 'TRABAJADOR' && !p.confirmadoTrabajador)) {
+                    <button class="btn btn--primary btn--sm" type="button" (click)="abrirModal('confirmarPago', sp, p)">
+                      Confirmar pago
+                    </button>
+                  }
+                </div>
+              }
+            }
+          </div>
+
+          <!-- Comisión del 5% / 95% (CU-20 / RN-09) -->
+          @if (sp.comision; as com) {
+            <div class="sub-box sub-box--info">
+              <strong>Comisión Plataforma (5 %):</strong> Bs. {{ com.montoComision }} |
+              <strong>Neto Trabajador (95 %):</strong> Bs. {{ com.montoNetoTrabajador }}
+              ({{ com.estado }})
+            </div>
+          }
+
+          <!-- Evaluación (CU-08) -->
+          @if (sp.evaluacion; as ev) {
+            <div class="sub-box">
+              <strong>Calificación registrada:</strong> {{ ev.puntuacion }} / 5 estrellas
+              @if (ev.comentario) { — "{{ ev.comentario }}" }
+            </div>
+          }
+
+          <!-- Reembolso (CU-19) -->
+          @if (sp.reembolso; as reemb) {
+            <div class="sub-box sub-box--warn">
+              <div>
+                <strong>Reembolso de anticipo (Bs. {{ reemb.montoSolicitado }}):</strong> {{ reemb.estado }}
+                — Motivo: {{ reemb.motivo }}
+                @if (reemb.observacionAdmin) { | Admin: {{ reemb.observacionAdmin }} }
+              </div>
+              @if (esAdmin() && reemb.estado === 'PENDIENTE') {
+                <button class="btn btn--primary btn--sm" type="button" (click)="abrirResolverReembolso(reemb)">
+                  Resolver reembolso
+                </button>
+              }
+            </div>
+          }
+
+          <!-- Reclamos (CU-07) -->
+          @if (sp.reclamos.length > 0) {
+            <div class="sub-box sub-box--danger">
+              <h3>Reclamos formales</h3>
+              @for (rec of sp.reclamos; track rec.idReclamo) {
+                <div class="pago-row">
+                  <div>
+                    <span class="badge">{{ rec.estado }}</span> {{ rec.descripcion }}
+                    @if (rec.resolucion) {
+                      <div class="field__hint"><strong>Resolución:</strong> {{ rec.resolucion }}</div>
+                    }
+                  </div>
+                  @if (esAdmin() && rec.estado !== 'CERRADO') {
+                    <button class="btn btn--secondary btn--sm" type="button" (click)="abrirResolverReclamo(rec)">
+                      Resolver
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Acciones según Rol -->
+          <div class="actions-bar">
+            @if (rolActivo() === 'CLIENTE') {
+              @if (sp.estado !== 'CANCELADO' && !tieneTipoPago(sp, 'ANTICIPO_25')) {
+                <button class="btn btn--primary btn--sm" type="button" (click)="abrirModal('anticipo', sp)">
+                  Registrar anticipo 25 %
+                </button>
+              }
+              @if (sp.estado !== 'CANCELADO' && !tieneTipoPago(sp, 'PAGO_FINAL')) {
+                <button class="btn btn--secondary btn--sm" type="button" (click)="abrirModal('pagoFinal', sp)">
+                  Registrar pago final
+                </button>
+              }
+              @if (sp.marcadoTerminadoPorTrabajador && !sp.confirmadoPorCliente && sp.estado !== 'CANCELADO') {
+                <button class="btn btn--primary btn--sm" type="button" (click)="confirmarConclusion(sp)">
+                  Confirmar conclusión
+                </button>
+              }
+              @if (sp.estado === 'COMPLETADO' && !sp.evaluacion) {
+                <button class="btn btn--secondary btn--sm" type="button" (click)="abrirModal('evaluar', sp)">
+                  Calificar trabajador
+                </button>
+              }
+              @if (sp.estado === 'COMPLETADO') {
+                <button class="btn btn--danger-ghost btn--sm" type="button" (click)="abrirModal('reclamo', sp)">
+                  Presentar reclamo (7 días)
+                </button>
+              }
+              @if (sp.estado === 'PROGRAMADO' || sp.estado === 'EN_PROCESO') {
+                <button class="btn btn--danger-ghost btn--sm" type="button" (click)="abrirModal('cancelar', sp)">
+                  Cancelar servicio
+                </button>
+              }
+              @if (sp.estado === 'CANCELADO' && tieneTipoPago(sp, 'ANTICIPO_25') && !sp.reembolso) {
+                <button class="btn btn--secondary btn--sm" type="button" (click)="abrirModal('reembolso', sp)">
+                  Solicitar reembolso
+                </button>
+              }
+            }
+
+            @if (rolActivo() === 'TRABAJADOR') {
+              @if (!sp.marcadoTerminadoPorTrabajador && sp.estado !== 'CANCELADO' && sp.estado !== 'COMPLETADO') {
+                <button class="btn btn--primary btn--sm" type="button" (click)="marcarTerminado(sp)">
+                  Marcar como terminado
+                </button>
+              }
+              @if (sp.estado === 'PROGRAMADO' || sp.estado === 'EN_PROCESO') {
+                <button class="btn btn--danger-ghost btn--sm" type="button" (click)="abrirModal('cancelar', sp)">
+                  Cancelar servicio
+                </button>
+              }
+            }
+          </div>
+        </article>
+      }
+    </div>
+  }
+</section>
+
+<!-- MODALES -->
+@if (modalActivo()) {
+  <div class="modal-backdrop" (click)="cerrarModal()">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h2>
+          @switch (modalActivo()) {
+            @case ('anticipo') { Registrar anticipo del 25 % }
+            @case ('pagoFinal') { Registrar pago final }
+            @case ('confirmarPago') { Confirmar pago bilateral }
+            @case ('cancelar') { Cancelar servicio contratado }
+            @case ('reembolso') { Solicitar reembolso de anticipo }
+            @case ('evaluar') { Calificar trabajador (1–5) }
+            @case ('reclamo') { Presentar reclamo formal }
+            @case ('resolverReclamo') { Resolver reclamo (Admin) }
+            @case ('resolverReembolso') { Resolver reembolso (Admin) }
+          }
+        </h2>
+        <button class="modal__close" type="button" (click)="cerrarModal()">×</button>
+      </div>
+
+      <div class="modal__body">
+        @if (modalActivo() === 'anticipo') {
+          <form [formGroup]="formAnticipo" (ngSubmit)="enviarAnticipo()" class="stack">
+            <div class="field">
+              <label>Precio total acordado (Bs.)</label>
+              <input type="number" step="0.01" formControlName="precioAcordado" />
+              <span class="field__hint">
+                Anticipo calculado (25 %): <strong>Bs. {{ (formAnticipo.controls.precioAcordado.value * 0.25) | number: '1.2-2' }}</strong>
+              </span>
+            </div>
+            <div class="field">
+              <label>Referencia / Comprobante (opcional)</label>
+              <input type="text" formControlName="referencia" placeholder="Ej. TRANSF-1029" />
+            </div>
+            <button class="btn btn--primary" type="submit" [disabled]="procesando()">Registrar anticipo</button>
+          </form>
+        }
+
+        @if (modalActivo() === 'pagoFinal') {
+          <form [formGroup]="formPagoFinal" (ngSubmit)="enviarPagoFinal()" class="stack">
+            <div class="field">
+              <label>Monto del pago final (Bs.)</label>
+              <input type="number" step="0.01" formControlName="monto" />
+            </div>
+            <div class="field">
+              <label>Referencia (opcional)</label>
+              <input type="text" formControlName="referencia" />
+            </div>
+            <button class="btn btn--primary" type="submit" [disabled]="procesando()">Registrar pago final</button>
+          </form>
+        }
+
+        @if (modalActivo() === 'confirmarPago') {
+          <form [formGroup]="formConfirmarPago" (ngSubmit)="enviarConfirmacionPago()" class="stack">
+            <div class="field">
+              <label>Monto que confirmas haber pagado / recibido (Bs.)</label>
+              <input type="number" step="0.01" formControlName="montoReportado" />
+              <span class="field__hint">Si coincide con la otra parte, el estado pasará a CONCILIADO; si difiere, a DISCREPANTE.</span>
+            </div>
+            <div class="field">
+              <label>Referencia (opcional)</label>
+              <input type="text" formControlName="referencia" />
+            </div>
+            <button class="btn btn--primary" type="submit" [disabled]="procesando()">Confirmar</button>
+          </form>
+        }
+
+        @if (modalActivo() === 'cancelar' || modalActivo() === 'reembolso') {
+          <form [formGroup]="formMotivo" (ngSubmit)="modalActivo() === 'cancelar' ? enviarCancelacion() : enviarReembolso()" class="stack">
+            <div class="field">
+              <label>Motivo *</label>
+              <textarea rows="3" formControlName="motivo" placeholder="Describe el motivo..."></textarea>
+            </div>
+            <button class="btn btn--danger" type="submit" [disabled]="procesando()">Confirmar</button>
+          </form>
+        }
+
+        @if (modalActivo() === 'evaluar') {
+          <form [formGroup]="formEvaluar" (ngSubmit)="enviarEvaluacion()" class="stack">
+            <div class="field">
+              <label>Puntuación (1 a 5 estrellas)</label>
+              <select formControlName="puntuacion">
+                <option [value]="5">5 - Excelente</option>
+                <option [value]="4">4 - Muy bueno</option>
+                <option [value]="3">3 - Bueno</option>
+                <option [value]="2">2 - Regular</option>
+                <option [value]="1">1 - Deficiente</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Comentario (opcional)</label>
+              <textarea rows="3" formControlName="comentario"></textarea>
+            </div>
+            <button class="btn btn--primary" type="submit" [disabled]="procesando()">Enviar calificación</button>
+          </form>
+        }
+
+        @if (modalActivo() === 'reclamo') {
+          <form [formGroup]="formReclamo" (ngSubmit)="enviarReclamo()" class="stack">
+            <div class="field">
+              <label>Descripción del problema *</label>
+              <textarea rows="4" formControlName="descripcion" placeholder="Explica el inconveniente con el servicio..."></textarea>
+            </div>
+            <div class="field">
+              <label>URL de evidencia / fotografía (opcional)</label>
+              <input type="text" formControlName="evidenciaUrl" placeholder="https://..." />
+            </div>
+            <button class="btn btn--danger" type="submit" [disabled]="procesando()">Enviar reclamo</button>
+          </form>
+        }
+
+        @if (modalActivo() === 'resolverReclamo') {
+          <form [formGroup]="formResolverReclamo" (ngSubmit)="enviarResolucionReclamo()" class="stack">
+            <div class="field">
+              <label>Nuevo estado</label>
+              <select formControlName="estado">
+                <option value="EN_REVISION">En revisión</option>
+                <option value="RESUELTO">Resuelto</option>
+                <option value="RECHAZADO">Rechazado</option>
+                <option value="CERRADO">Cerrado</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Resolución administrativa *</label>
+              <textarea rows="3" formControlName="resolucion"></textarea>
+            </div>
+            <button class="btn btn--primary" type="submit" [disabled]="procesando()">Guardar resolución</button>
+          </form>
+        }
+
+        @if (modalActivo() === 'resolverReembolso') {
+          <form [formGroup]="formResolverReembolso" (ngSubmit)="enviarResolucionReembolso()" class="stack">
+            <div class="field">
+              <label>Decisión</label>
+              <select formControlName="estado">
+                <option value="APROBADO">Aprobado</option>
+                <option value="COMPLETADO">Completado</option>
+                <option value="RECHAZADO">Rechazado</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Observación administrativa</label>
+              <textarea rows="3" formControlName="observacionAdmin"></textarea>
+            </div>
+            <button class="btn btn--primary" type="submit" [disabled]="procesando()">Guardar decisión</button>
+          </form>
+        }
+      </div>
+    </div>
+  </div>
+}

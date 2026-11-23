@@ -6,23 +6,28 @@ import { AppService } from './app.service';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CategoriaServicio } from './entities/categoria-servicio.entity';
+import { Comision } from './entities/comision.entity';
+import { DisponibilidadTrabajador } from './entities/disponibilidad-trabajador.entity';
+import { Evaluacion } from './entities/evaluacion.entity';
 import { FotografiaSolicitud } from './entities/fotografia-solicitud.entity';
 import { HistorialSolicitud } from './entities/historial-solicitud.entity';
 import { Notificacion } from './entities/notificacion.entity';
 import { Pago } from './entities/pago.entity';
 import { PerfilTrabajador } from './entities/perfil-trabajador.entity';
+import { Reclamo } from './entities/reclamo.entity';
+import { Reembolso } from './entities/reembolso.entity';
 import { RegistroAuditoria } from './entities/registro-auditoria.entity';
+import { ServicioProgramado } from './entities/servicio-programado.entity';
+import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
 import { SolicitudServicio } from './entities/solicitud-servicio.entity';
 import { Usuario } from './entities/usuario.entity';
 import { Zona } from './entities/zona.entity';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PaymentsModule } from './payments/payments.module';
 import { RequestsModule } from './requests/requests.module';
 import { SeedModule } from './seed/seed.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
 import { UsersModule } from './users/users.module';
-import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
-import { DisponibilidadTrabajador } from './entities/disponibilidad-trabajador.entity';
-import { ServicioProgramado } from './entities/servicio-programado.entity';
 import { WorkersModule } from './workers/workers.module';
 
 @Module({
@@ -51,6 +56,10 @@ import { WorkersModule } from './workers/workers.module';
           HistorialSolicitud,
           Notificacion,
           Pago,
+          Comision,
+          Reembolso,
+          Evaluacion,
+          Reclamo,
         ],
         autoLoadEntities: true,
         // El esquema se gobierna con Arreglalo_ya.sql; no dejar que TypeORM lo altere.
@@ -64,6 +73,7 @@ import { WorkersModule } from './workers/workers.module';
     WorkersModule,
     NotificationsModule,
     RequestsModule,
+    PaymentsModule,
     SuperadminModule,
     SeedModule,
   ],
