@@ -15,6 +15,11 @@ import { ResponderVisitaPreviaDto } from './dto/responder-visita-previa.dto';
 
 const ESTADOS_SOLICITUD_VISITA = ['ACTIVA', 'EN_COTIZACION', 'CONTRATADA', 'PROGRAMADA'];
 
+const TRANSICIONES_VISITA: Record<string, string[]> = {
+  SOLICITADA: ['ACEPTADA', 'RECHAZADA', 'CANCELADA'],
+  ACEPTADA: ['CANCELADA', 'REALIZADA', 'NO_REALIZADA'],
+};
+
 @Injectable()
 export class VisitsService {
   constructor(
@@ -134,19 +139,49 @@ export class VisitsService {
     const esCliente = visita.solicitud.cliente.idUsuario === usuario.idUsuario;
     const perfilActor = await this.perfilRepo.findOne({ where: { usuario: { idUsuario: usuario.idUsuario } } });
     let esTrabajador = visita.perfil?.usuario?.idUsuario === usuario.idUsuario;
-    if (!esTrabajador && perfilActor) {
-      const cotizada = await this.cotizacionRepo.findOne({ where: { solicitud: { idSolicitud: visita.solicitud.idSolicitud } as any, perfil: { idPerfil: perfilActor.idPerfil } as any } });
-      if (cotizada || !visita.perfil) esTrabajador = true;
-      if (!visita.perfil) visita.perfil = perfilActor;
+
+    if (!esTrabajador && perfilActor && !visita.perfil) {
+      const cotizada = await this.cotizacionRepo.findOne({
+        where: {
+          solicitud: { idSolicitud: visita.solicitud.idSolicitud } as any,
+          perfil: { idPerfil: perfilActor.idPerfil } as any,
+          estado: 'ACEPTADA',
+        },
+      });
+      if (cotizada) {
+        esTrabajador = true;
+        visita.perfil = perfilActor;
+      }
     }
+
     if (!esCliente && !esTrabajador && ![Rol.ADMIN, Rol.SUPERADMIN].includes(usuario.rolActivo)) {
       throw new ForbiddenException('No tienes permiso para responder esta visita.');
+    }
+
+    const transicionesPermitidas = TRANSICIONES_VISITA[visita.estado] ?? [];
+    if (dto.estado === visita.estado || !transicionesPermitidas.includes(dto.estado)) {
+      throw new BadRequestException('Transición de estado de visita no permitida.');
+    }
+    if (
+      ['REALIZADA', 'NO_REALIZADA'].includes(dto.estado) &&
+      !esTrabajador &&
+      ![Rol.ADMIN, Rol.SUPERADMIN].includes(usuario.rolActivo)
+    ) {
+      throw new ForbiddenException('Solo el trabajador puede finalizar la visita.');
     }
 
     const estadoAnterior = visita.estado;
     visita.estado = dto.estado;
     visita.usuarioRespuesta = usuario;
-    if (dto.fechaConfirmada) visita.fechaConfirmada = this.normalizarFecha(dto.fechaConfirmada);
+
+    if (dto.fechaConfirmada) {
+      const fechaConfirmada = this.normalizarFecha(dto.fechaConfirmada);
+      this.validarFechaFutura(
+        fechaConfirmada,
+        dto.horaConfirmada ? this.normalizarHora(dto.horaConfirmada) : visita.horaPropuesta,
+      );
+      visita.fechaConfirmada = fechaConfirmada;
+    }
     if (dto.horaConfirmada) visita.horaConfirmada = this.normalizarHora(dto.horaConfirmada);
     if (dto.resultado?.trim()) visita.resultado = dto.resultado.trim();
     if (dto.estado === 'ACEPTADA') {
@@ -185,6 +220,15 @@ export class VisitsService {
   private normalizarFecha(value: string): string {
     const fecha = value.slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new BadRequestException('Fecha inválida.');
+    const [anio, mes, dia] = fecha.split('-').map(Number);
+    const fechaValidada = new Date(Date.UTC(anio, mes - 1, dia));
+    if (
+      fechaValidada.getUTCFullYear() !== anio ||
+      fechaValidada.getUTCMonth() !== mes - 1 ||
+      fechaValidada.getUTCDate() !== dia
+    ) {
+      throw new BadRequestException('Fecha inválida.');
+    }
     return fecha;
   }
   private normalizarHora(value: string): string {

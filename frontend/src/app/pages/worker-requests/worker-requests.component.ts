@@ -141,6 +141,8 @@ export class WorkerRequestsComponent implements OnInit {
       alcance: '',
       condiciones: '',
     });
+
+    this.cargarVisitas(solicitud.idSolicitud);
   }
 
   protected cerrarDetalle(): void {

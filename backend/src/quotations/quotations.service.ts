@@ -266,6 +266,39 @@ export class QuotationsService {
 
     const resultado = await this.dataSource.transaction(
       async (manager) => {
+        const cotizacionBloqueada = await manager
+          .getRepository(Cotizacion)
+          .findOne({
+            where: { idCotizacion },
+            lock: { mode: 'pessimistic_write' },
+          });
+
+        if (!cotizacionBloqueada || cotizacionBloqueada.estado !== 'ENVIADA') {
+          throw new BadRequestException(
+            'Esta cotización ya fue respondida.',
+          );
+        }
+
+        if (dto.decision === 'ACEPTADA') {
+          const otraAceptada = await manager
+            .getRepository(Cotizacion)
+            .createQueryBuilder('cotizacion')
+            .where('cotizacion.id_solicitud = :idSolicitud', {
+              idSolicitud: cotizacion.solicitud.idSolicitud,
+            })
+            .andWhere('cotizacion.id_cotizacion != :idCotizacion', {
+              idCotizacion,
+            })
+            .andWhere("cotizacion.estado = 'ACEPTADA'")
+            .getOne();
+
+          if (otraAceptada) {
+            throw new BadRequestException(
+              'Ya existe una cotización aceptada para esta solicitud.',
+            );
+          }
+        }
+
         cotizacion.estado = dto.decision;
         cotizacion.fechaRespuesta = new Date();
         cotizacion.usuarioDecision = usuario;
