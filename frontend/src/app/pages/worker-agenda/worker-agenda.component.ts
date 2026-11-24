@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin, timeout } from 'rxjs';
 import { mensajeDeError } from '../../core/utils/http-error.util';
 import {
   DisponibilidadTrabajador,
@@ -66,17 +66,17 @@ export class WorkerAgendaComponent implements OnInit {
     this.error.set('');
     this.exito.set('');
     forkJoin(dias.map(({ diaSemana, horaInicio, horaFin, disponible }) =>
-      this.workers.guardarDisponibilidad({ diaSemana, horaInicio, horaFin, disponible }),
-    )).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.exito.set('Tu disponibilidad semanal se guardó correctamente.');
-      },
-      error: (error: unknown) => {
-        this.guardando.set(false);
-        this.error.set(mensajeDeError(error, 'No se pudo guardar toda la disponibilidad. Intenta nuevamente.'));
-      },
-    });
+      this.workers.guardarDisponibilidad({ diaSemana, horaInicio, horaFin, disponible }).pipe(timeout(15000)),
+    ))
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: () => {
+          this.exito.set('Tu disponibilidad semanal se guardó correctamente.');
+        },
+        error: (error: unknown) => {
+          this.error.set(mensajeDeError(error, 'No se pudo guardar toda la disponibilidad. Intenta nuevamente.'));
+        },
+      });
   }
 
   protected programar(): void {
@@ -92,18 +92,26 @@ export class WorkerAgendaComponent implements OnInit {
     this.programando.set(true);
     this.error.set('');
     this.exito.set('');
-    this.workers.programarServicio(valor).subscribe({
-      next: () => {
-        this.programando.set(false);
-        this.exito.set('Servicio programado correctamente.');
-        this.formulario.controls.idSolicitud.reset('');
-        this.cargarAgenda();
-      },
-      error: (error: unknown) => {
-        this.programando.set(false);
-        this.error.set(mensajeDeError(error, 'No se pudo programar el servicio.'));
-      },
-    });
+    this.workers.programarServicio(valor)
+      .pipe(
+        timeout(15000),
+        finalize(() => this.programando.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          this.exito.set('Servicio programado correctamente.');
+          this.formulario.controls.idSolicitud.reset('');
+          this.cargarAgenda();
+        },
+        error: (error: unknown) => {
+          const name = (error as { name?: string })?.name;
+          if (name === 'TimeoutError') {
+            this.error.set('El servidor no respondió a tiempo al programar. Verifica el backend e intenta de nuevo.');
+            return;
+          }
+          this.error.set(mensajeDeError(error, 'No se pudo programar el servicio.'));
+        },
+      });
   }
 
   private cargarDatos(): void {

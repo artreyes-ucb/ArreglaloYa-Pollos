@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize, timeout } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { mensajeDeError } from '../../core/utils/http-error.util';
 
@@ -53,16 +54,25 @@ export class LoginComponent implements OnInit {
     this.enviando.set(true);
     this.error.set('');
 
-    this.auth.login(this.formulario.getRawValue()).subscribe({
-      next: () => {
-        this.enviando.set(false);
-        void this.router.navigateByUrl(this.destino());
-      },
-      error: (error: unknown) => {
-        this.enviando.set(false);
-        this.error.set(mensajeDeError(error, 'No se pudo iniciar sesión.'));
-      },
-    });
+    this.auth
+      .login(this.formulario.getRawValue())
+      .pipe(
+        timeout(15000),
+        finalize(() => this.enviando.set(false)),
+      )
+      .subscribe({
+        next: () => {
+          void this.router.navigateByUrl(this.destino());
+        },
+        error: (error: unknown) => {
+          const name = (error as { name?: string })?.name;
+          if (name === 'TimeoutError') {
+            this.error.set('El servidor no respondió a tiempo. Verifica que el backend esté activo e intenta de nuevo.');
+            return;
+          }
+          this.error.set(mensajeDeError(error, 'No se pudo iniciar sesión.'));
+        },
+      });
   }
 
   protected mostrarError(campo: CampoLogin): boolean {
