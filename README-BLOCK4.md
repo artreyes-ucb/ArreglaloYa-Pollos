@@ -86,3 +86,5 @@ Las cuentas temporales utilizadas durante las pruebas locales son solo de entorn
 ## 8. Integración
 
 Bloque integrado en la rama `main` mediante el Pull Request #1. No se realizaron merges adicionales como parte de esta revisión.
+
+Nota: las correcciones y documentación de esta revisión están publicadas únicamente en `feature/block-4-cotizaciones-programacion`. El PR #1 ya fue mergeado y cerrado, por lo que para incorporar estos cambios a `main` se requiere autorización o un nuevo Pull Request.
