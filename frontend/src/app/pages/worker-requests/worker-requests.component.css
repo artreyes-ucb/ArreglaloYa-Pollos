@@ -1,3 +1,4 @@
+
 .search-card {
   margin-bottom: 1.25rem;
 }
@@ -178,6 +179,93 @@
   line-height: 1.5;
 }
 
+/* Sección de cotizaciones */
+
+.quote-section {
+  margin-top: 0.5rem;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quote-section__title {
+  margin: 0.35rem 0;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.quote-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quote-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.quote-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.quote-form input,
+.quote-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.quote-form textarea {
+  resize: vertical;
+  min-height: 85px;
+}
+
+.quote-total {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.quote-total span {
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.quote-total strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.quote-error {
+  color: #dc2626;
+}
+
+.quote-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.quote-form__actions button {
+  min-width: 180px;
+}
+
 @media (max-width: 900px) {
   .search-grid {
     grid-template-columns: 1fr;
@@ -189,7 +277,17 @@
 }
 
 @media (max-width: 520px) {
-  .opportunity-meta {
+  .opportunity-meta,
+  .quote-form__grid {
     grid-template-columns: 1fr;
+  }
+
+  .quote-total {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .quote-form__actions button {
+    width: 100%;
   }
 }

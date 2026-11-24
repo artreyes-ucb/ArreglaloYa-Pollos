@@ -1,3 +1,5 @@
+import { Cotizacion } from '../entities/cotizacion.entity';
+import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
 import {
   BadRequestException,
   Injectable,
@@ -423,9 +425,55 @@ async programarServicio(
       throw new NotFoundException('Solicitud no encontrada');
     }
 
-    if (solicitud.estado !== 'ACTIVA') {
+    const cotizacionAceptada = await manager
+      .getRepository(Cotizacion)
+      .findOne({
+        where: {
+          solicitud: { idSolicitud: solicitud.idSolicitud },
+          perfil: { idPerfil: perfil.idPerfil },
+          estado: 'ACEPTADA',
+        },
+      });
+
+    if (!cotizacionAceptada) {
       throw new BadRequestException(
-        'La solicitud ya no está disponible para programar',
+        'No existe una cotización aceptada para esta solicitud y trabajador',
+      );
+    }
+
+    if (
+      solicitud.estado === 'ACTIVA' ||
+      solicitud.estado === 'EN_COTIZACION'
+    ) {
+      const estadoAnterior = solicitud.estado;
+
+      solicitud.estado = 'CONTRATADA';
+
+      await manager.getRepository(SolicitudServicio).save(solicitud);
+
+      const historialContratacion = manager.create(
+        HistorialSolicitud,
+        {
+          solicitud: {
+            idSolicitud: solicitud.idSolicitud,
+          },
+          usuarioActor: { idUsuario },
+          tipoEvento: 'SOLICITUD_CONTRATADA',
+          estadoAnterior,
+          estadoNuevo: 'CONTRATADA',
+          detalle: {
+            idCotizacion: cotizacionAceptada.idCotizacion,
+            origen: 'regularizacion_programacion',
+          },
+        },
+      );
+
+      await manager.save(HistorialSolicitud, historialContratacion);
+    }
+
+    if (solicitud.estado !== 'CONTRATADA') {
+      throw new BadRequestException(
+        'La solicitud debe estar contratada para programar el servicio',
       );
     }
 
@@ -456,10 +504,15 @@ async programarServicio(
       );
     }
 
-    if (
-      dto.horaInicio < disponibilidad.horaInicio ||
-      dto.horaFin > disponibilidad.horaFin
-    ) {
+    const horaInicioSolicitada = dto.horaInicio.slice(0, 5);
+const horaFinSolicitada = dto.horaFin.slice(0, 5);
+const horaInicioDisponible = disponibilidad.horaInicio.slice(0, 5);
+const horaFinDisponible = disponibilidad.horaFin.slice(0, 5);
+
+if (
+  horaInicioSolicitada < horaInicioDisponible ||
+  horaFinSolicitada > horaFinDisponible
+) {
       throw new BadRequestException(
         'El horario solicitado está fuera de la disponibilidad del trabajador',
       );
@@ -502,6 +555,7 @@ async programarServicio(
     const programacion = programacionRepository.create({
       solicitud,
       perfil,
+      cotizacion: cotizacionAceptada,
       fechaServicio: dto.fechaServicio,
       horaInicio: dto.horaInicio,
       horaFin: dto.horaFin,

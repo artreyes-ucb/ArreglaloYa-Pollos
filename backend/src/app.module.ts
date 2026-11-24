@@ -1,37 +1,46 @@
+
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RequestsModule } from './requests/requests.module';
+import { QuotationsModule } from './quotations/quotations.module';
+import { SeedModule } from './seed/seed.module';
+import { SuperadminModule } from './superadmin/superadmin.module';
+import { UsersModule } from './users/users.module';
+import { WorkersModule } from './workers/workers.module';
+
 import { CategoriaServicio } from './entities/categoria-servicio.entity';
+import { Cotizacion } from './entities/cotizacion.entity';
+import { DisponibilidadTrabajador } from './entities/disponibilidad-trabajador.entity';
 import { FotografiaSolicitud } from './entities/fotografia-solicitud.entity';
 import { HistorialSolicitud } from './entities/historial-solicitud.entity';
+import { IncrementoCotizacion } from './entities/incremento-cotizacion.entity';
 import { Notificacion } from './entities/notificacion.entity';
 import { Pago } from './entities/pago.entity';
 import { PerfilTrabajador } from './entities/perfil-trabajador.entity';
 import { RegistroAuditoria } from './entities/registro-auditoria.entity';
+import { ServicioProgramado } from './entities/servicio-programado.entity';
+import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
 import { SolicitudServicio } from './entities/solicitud-servicio.entity';
 import { Usuario } from './entities/usuario.entity';
+import { VisitaPrevia } from './entities/visita-previa.entity';
 import { Zona } from './entities/zona.entity';
-import { NotificationsModule } from './notifications/notifications.module';
-import { RequestsModule } from './requests/requests.module';
-import { SeedModule } from './seed/seed.module';
-import { SuperadminModule } from './superadmin/superadmin.module';
-import { UsersModule } from './users/users.module';
-import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
-import { DisponibilidadTrabajador } from './entities/disponibilidad-trabajador.entity';
-import { ServicioProgramado } from './entities/servicio-programado.entity';
-import { WorkersModule } from './workers/workers.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
+        type: 'postgres' as const,
         host: configService.get<string>('DB_HOST', 'localhost'),
         port: Number(configService.get<string>('DB_PORT', '5432')),
         username: configService.get<string>('DB_USERNAME', 'postgres'),
@@ -51,19 +60,25 @@ import { WorkersModule } from './workers/workers.module';
           HistorialSolicitud,
           Notificacion,
           Pago,
+          Cotizacion,
+          IncrementoCotizacion,
+          VisitaPrevia,
         ],
         autoLoadEntities: true,
-        // El esquema se gobierna con Arreglalo_ya.sql; no dejar que TypeORM lo altere.
+        // El esquema se gobierna con Arreglalo_ya.sql.
+        // No permitir que TypeORM altere la base de datos.
         synchronize: false,
         logging: false,
       }),
     }),
+
     AuditModule,
     AuthModule,
     UsersModule,
     WorkersModule,
     NotificationsModule,
     RequestsModule,
+    QuotationsModule,
     SuperadminModule,
     SeedModule,
   ],
@@ -71,3 +86,4 @@ import { WorkersModule } from './workers/workers.module';
   providers: [AppService],
 })
 export class AppModule {}
+
