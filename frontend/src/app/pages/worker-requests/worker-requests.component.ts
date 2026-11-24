@@ -15,8 +15,10 @@ import {
 } from '../../core/models/requests.models';
 
 import { CrearCotizacionPayload } from '../../core/models/quotations.models';
-import { RequestsService } from '../../core/services/requests.service';
+import { VisitaPreviaItem } from '../../core/models/visits.models';
 import { QuotationsService } from '../../core/services/quotations.service';
+import { RequestsService } from '../../core/services/requests.service';
+import { VisitsService } from '../../core/services/visits.service';
 import { mensajeDeError } from '../../core/utils/http-error.util';
 
 @Component({
@@ -30,6 +32,7 @@ export class WorkerRequestsComponent implements OnInit {
 
   protected readonly requestsService = inject(RequestsService);
   private readonly quotationsService = inject(QuotationsService);
+  private readonly visitsService = inject(VisitsService);
 
   protected readonly categorias = signal<CategoriaServicioItem[]>([]);
   protected readonly zonas = signal<ZonaItem[]>([]);
@@ -49,6 +52,11 @@ export class WorkerRequestsComponent implements OnInit {
   protected readonly cotizacionEnviada = signal(false);
   protected readonly mensajeCotizacion = signal('');
   protected readonly errorCotizacion = signal('');
+  protected readonly visitas = signal<VisitaPreviaItem[]>([]);
+  protected readonly cargandoVisitas = signal(false);
+  protected readonly errorVisitas = signal('');
+  protected readonly guardandoVisita = signal(false);
+  protected readonly visitaForm = this.fb.nonNullable.group({ fechaPropuesta: ['', [Validators.required]], horaPropuesta: ['', [Validators.required]], resultado: [''] });
 
   protected readonly filtrosForm = this.fb.nonNullable.group({
     idCategoria: [0],
@@ -203,6 +211,29 @@ export class WorkerRequestsComponent implements OnInit {
           mensajeDeError(err, 'No se pudo enviar la cotización. Intenta nuevamente.'),
         );
       },
+    });
+  }
+
+  protected cargarVisitas(idSolicitud: string): void {
+    this.cargandoVisitas.set(true); this.errorVisitas.set('');
+    this.visitsService.listarPorSolicitud(idSolicitud).subscribe({
+      next: (l) => { this.visitas.set(l); this.cargandoVisitas.set(false); },
+      error: (e: unknown) => { this.cargandoVisitas.set(false); this.errorVisitas.set(mensajeDeError(e,'No se pudieron cargar las visitas previas.')); },
+    });
+  }
+  protected solicitarVisita(): void {
+    const sol=this.detalleSolicitud(); if(!sol||this.visitaForm.invalid||this.guardandoVisita()){this.visitaForm.markAllAsTouched(); return;}
+    const r=this.visitaForm.getRawValue(); this.guardandoVisita.set(true); this.errorVisitas.set('');
+    this.visitsService.crear({idSolicitud:sol.idSolicitud, fechaPropuesta:r.fechaPropuesta, horaPropuesta:r.horaPropuesta, resultado:r.resultado.trim()||undefined}).subscribe({
+      next:()=>{this.guardandoVisita.set(false); this.visitaForm.reset({fechaPropuesta:'',horaPropuesta:'',resultado:''}); this.cargarVisitas(sol.idSolicitud);},
+      error:(e:unknown)=>{this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(e,'No se pudo registrar la visita previa.'));},
+    });
+  }
+  protected responderVisita(v: VisitaPreviaItem, estado:'ACEPTADA'|'RECHAZADA'|'CANCELADA'|'REALIZADA'|'NO_REALIZADA'): void {
+    if(this.guardandoVisita()) return; this.guardandoVisita.set(true); this.errorVisitas.set('');
+    this.visitsService.responder(v.idVisita,{estado}).subscribe({
+      next:()=>{this.guardandoVisita.set(false); const id=this.detalleSolicitud()?.idSolicitud; if(id) this.cargarVisitas(id);},
+      error:(e:unknown)=>{this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(e,'No se pudo actualizar la visita previa.'));},
     });
   }
 

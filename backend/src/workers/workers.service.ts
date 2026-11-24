@@ -1,5 +1,6 @@
 import { Cotizacion } from '../entities/cotizacion.entity';
 import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
+import { RegistroAuditoria } from '../entities/registro-auditoria.entity';
 import {
   BadRequestException,
   Injectable,
@@ -567,17 +568,19 @@ if (
     solicitud.estado = 'PROGRAMADA';
     await manager.getRepository(SolicitudServicio).save(solicitud);
 
-    await this.auditService.registrarEvento(
-      idUsuario,
-      'SERVICIO_PROGRAMADO',
-      'servicios_programados',
-      guardado.idProgramacion,
-      {
-        idSolicitud: solicitud.idSolicitud,
-        fechaServicio: dto.fechaServicio,
-        horaInicio: dto.horaInicio,
-        horaFin: dto.horaFin,
-      },
+    await manager.getRepository(RegistroAuditoria).save(
+      manager.getRepository(RegistroAuditoria).create({
+        usuarioActor: { idUsuario } as any,
+        accion: 'SERVICIO_PROGRAMADO',
+        entidadAfectada: 'servicios_programados',
+        idEntidadAfectada: guardado.idProgramacion,
+        detalle: {
+          idSolicitud: solicitud.idSolicitud,
+          fechaServicio: dto.fechaServicio,
+          horaInicio: dto.horaInicio,
+          horaFin: dto.horaFin,
+        },
+      }),
     );
 
     return {

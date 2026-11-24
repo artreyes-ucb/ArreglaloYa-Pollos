@@ -16,10 +16,12 @@ import {
   CotizacionItem,
   DecisionCotizacion,
 } from '../../core/models/quotations.models';
+import { VisitaPreviaItem } from '../../core/models/visits.models';
 
 import { NotificationsService } from '../../core/services/notifications.service';
 import { QuotationsService } from '../../core/services/quotations.service';
 import { RequestsService } from '../../core/services/requests.service';
+import { VisitsService } from '../../core/services/visits.service';
 import { mensajeDeError } from '../../core/utils/http-error.util';
 
 @Component({
@@ -34,6 +36,7 @@ export class ClientRequestsComponent implements OnInit {
   protected readonly requestsService = inject(RequestsService);
   private readonly notificationsService = inject(NotificationsService);
   private readonly quotationsService = inject(QuotationsService);
+  private readonly visitsService = inject(VisitsService);
 
   protected readonly categorias = signal<CategoriaServicioItem[]>([]);
   protected readonly zonas = signal<ZonaItem[]>([]);
@@ -60,6 +63,17 @@ export class ClientRequestsComponent implements OnInit {
   protected readonly cargandoCotizaciones = signal(false);
   protected readonly errorCotizaciones = signal('');
   protected readonly cotizacionRespondiendo = signal<string | null>(null);
+
+  // Visitas previas
+  protected readonly visitas = signal<VisitaPreviaItem[]>([]);
+  protected readonly cargandoVisitas = signal(false);
+  protected readonly errorVisitas = signal('');
+  protected readonly guardandoVisita = signal(false);
+  protected readonly visitaForm = this.fb.nonNullable.group({
+    fechaPropuesta: ['', [Validators.required]],
+    horaPropuesta: ['', [Validators.required]],
+    resultado: [''],
+  });
 
   // Modal cancelar
   protected readonly solicitudACancelar = signal<SolicitudServicioItem | null>(null);
@@ -369,12 +383,15 @@ export class ClientRequestsComponent implements OnInit {
     this.cargandoDetalle.set(true);
     this.cotizaciones.set([]);
     this.errorCotizaciones.set('');
+    this.visitas.set([]);
+    this.errorVisitas.set('');
 
     this.requestsService.obtenerDetalle(solicitud.idSolicitud).subscribe({
       next: (detalle) => {
         this.detalleAbierto.set(detalle);
         this.cargandoDetalle.set(false);
         this.cargarCotizaciones(detalle.idSolicitud);
+        this.cargarVisitas(detalle.idSolicitud);
       },
       error: (err: unknown) => {
         this.cargandoDetalle.set(false);
@@ -392,6 +409,8 @@ export class ClientRequestsComponent implements OnInit {
     this.detalleAbierto.set(null);
     this.cotizaciones.set([]);
     this.errorCotizaciones.set('');
+    this.visitas.set([]);
+    this.errorVisitas.set('');
   }
 
   // Consultar cotizaciones recibidas
@@ -417,6 +436,48 @@ export class ClientRequestsComponent implements OnInit {
   }
 
   // Aceptar o rechazar cotización
+  protected cargarVisitas(idSolicitud: string): void {
+    this.cargandoVisitas.set(true);
+    this.errorVisitas.set('');
+    this.visitsService.listarPorSolicitud(idSolicitud).subscribe({
+      next: (lista) => { this.visitas.set(lista); this.cargandoVisitas.set(false); },
+      error: (err: unknown) => { this.cargandoVisitas.set(false); this.errorVisitas.set(mensajeDeError(err, 'No se pudieron cargar las visitas previas.')); },
+    });
+  }
+
+  protected solicitarVisita(): void {
+    const detalle = this.detalleAbierto();
+    if (!detalle || this.visitaForm.invalid || this.guardandoVisita()) { this.visitaForm.markAllAsTouched(); return; }
+    const raw = this.visitaForm.getRawValue();
+    this.guardandoVisita.set(true);
+    this.errorVisitas.set('');
+    this.visitsService.crear({ idSolicitud: detalle.idSolicitud, fechaPropuesta: raw.fechaPropuesta, horaPropuesta: raw.horaPropuesta, resultado: raw.resultado.trim() || undefined }).subscribe({
+      next: () => {
+        this.guardandoVisita.set(false);
+        this.visitaForm.reset({ fechaPropuesta: '', horaPropuesta: '', resultado: '' });
+        this.mensajeExito.set('Visita previa solicitada correctamente.');
+        this.cargarVisitas(detalle.idSolicitud);
+        this.notificationsService.refrescarContador();
+      },
+      error: (err: unknown) => { this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(err, 'No se pudo registrar la visita previa.')); },
+    });
+  }
+
+  protected responderVisita(visita: VisitaPreviaItem, estado: 'ACEPTADA' | 'RECHAZADA' | 'CANCELADA' | 'REALIZADA' | 'NO_REALIZADA'): void {
+    if (this.guardandoVisita()) return;
+    this.guardandoVisita.set(true);
+    this.errorVisitas.set('');
+    this.visitsService.responder(visita.idVisita, { estado }).subscribe({
+      next: () => {
+        this.guardandoVisita.set(false);
+        const idSolicitud = this.detalleAbierto()?.idSolicitud;
+        if (idSolicitud) this.cargarVisitas(idSolicitud);
+        this.notificationsService.refrescarContador();
+      },
+      error: (err: unknown) => { this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(err, 'No se pudo actualizar la visita previa.')); },
+    });
+  }
+
   protected responderCotizacion(
     cotizacion: CotizacionItem,
     decision: DecisionCotizacion,

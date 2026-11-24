@@ -275,7 +275,38 @@
           </div>
         }
 
-        <div class="quote-section">
+                <div class="quote-section">
+          <div>
+            <span class="eyebrow">Visitas previas</span>
+            <h3 class="quote-section__title">Visitas previas</h3>
+          </div>
+          @if (errorVisitas()) { <div class="alert alert--error">{{ errorVisitas() }}</div> }
+          <form class="quote-form" [formGroup]="visitaForm" (ngSubmit)="solicitarVisita()">
+            <div class="quote-form__grid">
+              <div class="field"><label for="vFechaW">Fecha</label><input id="vFechaW" type="date" formControlName="fechaPropuesta" /></div>
+              <div class="field"><label for="vHoraW">Hora</label><input id="vHoraW" type="time" formControlName="horaPropuesta" /></div>
+            </div>
+            <div class="field"><label for="vNotaW">Nota</label><input id="vNotaW" type="text" formControlName="resultado" /></div>
+            <div class="quote-form__actions"><button type="submit" class="btn btn--primary" [disabled]="guardandoVisita()">Solicitar visita</button></div>
+          </form>
+          @if (cargandoVisitas()) { <p>Cargando visitas...</p> } @else if (visitas().length === 0) { <p class="field__hint">Sin visitas previas registradas.</p> }
+          @else {
+            @for (v of visitas(); track v.idVisita) {
+              <div class="quote-form" style="margin-top:10px">
+                <strong>{{ v.fechaPropuesta }} {{ v.horaPropuesta.slice(0,5) }}</strong> <span class="chip">{{ v.estado }}</span>
+                @if (v.resultado) { <p class="mb-0">{{ v.resultado }}</p> }
+                @if (v.estado === "SOLICITADA") {
+                  <div class="inline-stack">
+                    <button type="button" class="btn btn--primary btn--sm" [disabled]="guardandoVisita()" (click)="responderVisita(v,'ACEPTADA')">Aceptar</button>
+                    <button type="button" class="btn btn--secondary btn--sm" [disabled]="guardandoVisita()" (click)="responderVisita(v,'RECHAZADA')">Rechazar</button>
+                  </div>
+                }
+              </div>
+            }
+          }
+        </div>
+
+<div class="quote-section">
           <div>
             <span class="eyebrow">CU-02 · Publicar cotización</span>
             <h3 class="quote-section__title">Enviar cotización al cliente</h3>

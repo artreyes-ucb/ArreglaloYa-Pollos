@@ -14,6 +14,7 @@ import { RequestsModule } from './requests/requests.module';
 import { SeedModule } from './seed/seed.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
 import { UsersModule } from './users/users.module';
+import { VisitsModule } from './visits/visits.module';
 import { WorkersModule } from './workers/workers.module';
 
 import { CategoriaServicio } from './entities/categoria-servicio.entity';
@@ -88,6 +89,7 @@ import { Zona } from './entities/zona.entity';
     RequestsModule,
     QuotationsModule,
     PaymentsModule,
+    VisitsModule,
     SuperadminModule,
     SeedModule,
   ],

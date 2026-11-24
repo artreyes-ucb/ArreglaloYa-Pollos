@@ -385,7 +385,38 @@
           </div>
         }
 
-        <section class="quotation-section">
+                <section class="quotation-section">
+          <header class="section-heading">
+            <div><span class="eyebrow">Visitas previas</span><h3>Visitas previas</h3></div>
+            <button type="button" class="btn btn-secondary" (click)="cargarVisitas(detalle.idSolicitud)">Actualizar</button>
+          </header>
+          @if (errorVisitas()) { <div class="alert alert-error">{{ errorVisitas() }}</div> }
+          <form [formGroup]="visitaForm" (ngSubmit)="solicitarVisita()" class="quotation-card">
+            <div class="price-grid">
+              <label>Fecha<input type="date" formControlName="fechaPropuesta"></label>
+              <label>Hora<input type="time" formControlName="horaPropuesta"></label>
+              <label>Nota<input type="text" formControlName="resultado" placeholder="Opcional"></label>
+            </div>
+            <div class="quotation-actions"><button type="submit" class="btn btn-primary" [disabled]="guardandoVisita()">{{ guardandoVisita() ? 'Guardando...' : 'Solicitar visita' }}</button></div>
+          </form>
+          @if (cargandoVisitas()) { <p>Cargando visitas...</p> }
+          @else if (visitas().length === 0) { <p>No hay visitas previas registradas.</p> }
+          @else { @for (v of visitas(); track v.idVisita) {
+            <article class="quotation-card">
+              <header><div><h4>{{ v.fechaPropuesta }} {{ v.horaPropuesta.slice(0,5) }}</h4><small>{{ v.trabajador ? (v.trabajador.nombres + ' ' + v.trabajador.apellidos) : 'Sin trabajador asignado' }}</small></div><span class="status-label">{{ v.estado }}</span></header>
+              @if (v.resultado) { <p>{{ v.resultado }}</p> }
+              @if (v.estado === 'SOLICITADA' || v.estado === 'ACEPTADA') {
+                <div class="quotation-actions">
+                  @if (v.estado === 'SOLICITADA') { <button type="button" class="btn btn-primary" [disabled]="guardandoVisita()" (click)="responderVisita(v,'ACEPTADA')">Aceptar</button> }
+                  <button type="button" class="btn btn-danger" [disabled]="guardandoVisita()" (click)="responderVisita(v,'RECHAZADA')">Rechazar</button>
+                  <button type="button" class="btn btn-secondary" [disabled]="guardandoVisita()" (click)="responderVisita(v,'CANCELADA')">Cancelar</button>
+                </div>
+              }
+            </article>
+          } }
+        </section>
+
+<section class="quotation-section">
           <header class="section-heading">
             <div>
               <span class="eyebrow">CU-02 · Cotizaciones</span>
