@@ -1,24 +1,38 @@
-import { DatePipe } from '@angular/common';
+
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+
 import {
   CategoriaServicioItem,
   SolicitudServicioItem,
   WhatsappLinkResponse,
   ZonaItem,
 } from '../../core/models/requests.models';
+
+import { CrearCotizacionPayload } from '../../core/models/quotations.models';
+import { VisitaPreviaItem } from '../../core/models/visits.models';
+import { QuotationsService } from '../../core/services/quotations.service';
 import { RequestsService } from '../../core/services/requests.service';
+import { VisitsService } from '../../core/services/visits.service';
 import { mensajeDeError } from '../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-worker-requests',
-  imports: [ReactiveFormsModule, DatePipe],
+  imports: [ReactiveFormsModule, DatePipe, DecimalPipe],
   templateUrl: './worker-requests.component.html',
   styleUrl: './worker-requests.component.css',
 })
 export class WorkerRequestsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+
   protected readonly requestsService = inject(RequestsService);
+  private readonly quotationsService = inject(QuotationsService);
+  private readonly visitsService = inject(VisitsService);
 
   protected readonly categorias = signal<CategoriaServicioItem[]>([]);
   protected readonly zonas = signal<ZonaItem[]>([]);
@@ -34,11 +48,28 @@ export class WorkerRequestsComponent implements OnInit {
   protected readonly cargandoWhatsapp = signal(false);
   protected readonly errorWhatsapp = signal('');
 
+  protected readonly enviandoCotizacion = signal(false);
+  protected readonly cotizacionEnviada = signal(false);
+  protected readonly mensajeCotizacion = signal('');
+  protected readonly errorCotizacion = signal('');
+  protected readonly visitas = signal<VisitaPreviaItem[]>([]);
+  protected readonly cargandoVisitas = signal(false);
+  protected readonly errorVisitas = signal('');
+  protected readonly guardandoVisita = signal(false);
+  protected readonly visitaForm = this.fb.nonNullable.group({ fechaPropuesta: ['', [Validators.required]], horaPropuesta: ['', [Validators.required]], resultado: [''] });
+
   protected readonly filtrosForm = this.fb.nonNullable.group({
     idCategoria: [0],
     idZona: [0],
     q: [''],
     soloMisCoincidencias: [false],
+  });
+
+  protected readonly cotizacionForm = this.fb.nonNullable.group({
+    precioManoObra: [0, [Validators.required, Validators.min(0)]],
+    precioMateriales: [0, [Validators.required, Validators.min(0)]],
+    alcance: ['', [Validators.required, Validators.minLength(5)]],
+    condiciones: [''],
   });
 
   ngOnInit(): void {
@@ -53,7 +84,7 @@ export class WorkerRequestsComponent implements OnInit {
         this.zonas.set(res.zonas);
       },
       error: () => {
-        // Silencioso si falla, se notificará en la búsqueda principal
+        // Silencioso si falla la carga de catálogos.
       },
     });
   }
@@ -61,9 +92,9 @@ export class WorkerRequestsComponent implements OnInit {
   protected buscar(): void {
     this.cargando.set(true);
     this.errorCarga.set('');
-    this.errorWhatsapp.set('');
 
     const raw = this.filtrosForm.getRawValue();
+
     this.requestsService
       .buscarSolicitudes({
         idCategoria: Number(raw.idCategoria) > 0 ? Number(raw.idCategoria) : null,
@@ -80,7 +111,9 @@ export class WorkerRequestsComponent implements OnInit {
         },
         error: (err: unknown) => {
           this.cargando.set(false);
-          this.errorCarga.set(mensajeDeError(err, 'No se pudieron cargar las solicitudes.'));
+          this.errorCarga.set(
+            mensajeDeError(err, 'No se pudieron cargar las solicitudes.'),
+          );
         },
       });
   }
@@ -92,15 +125,116 @@ export class WorkerRequestsComponent implements OnInit {
       q: '',
       soloMisCoincidencias: false,
     });
+
     this.buscar();
   }
 
   protected abrirDetalle(solicitud: SolicitudServicioItem): void {
     this.detalleSolicitud.set(solicitud);
+    this.cotizacionEnviada.set(false);
+    this.mensajeCotizacion.set('');
+    this.errorCotizacion.set('');
+
+    this.cotizacionForm.reset({
+      precioManoObra: 0,
+      precioMateriales: 0,
+      alcance: '',
+      condiciones: '',
+    });
   }
 
   protected cerrarDetalle(): void {
     this.detalleSolicitud.set(null);
+  }
+
+  protected puedeEnviarCotizacion(solicitud: SolicitudServicioItem): boolean {
+    return (
+      this.estadoValidacion() === 'APROBADO' &&
+      ['ACTIVA', 'PRIORIDAD_REDUCIDA', 'EN_COTIZACION'].includes(solicitud.estado) &&
+      !this.cotizacionEnviada()
+    );
+  }
+
+  protected calcularTotalCotizacion(): number {
+    const valores = this.cotizacionForm.getRawValue();
+
+    return (
+      Number(valores.precioManoObra || 0) +
+      Number(valores.precioMateriales || 0)
+    );
+  }
+
+  protected enviarCotizacion(solicitud: SolicitudServicioItem): void {
+    this.errorCotizacion.set('');
+    this.mensajeCotizacion.set('');
+
+    if (!this.puedeEnviarCotizacion(solicitud)) {
+      this.errorCotizacion.set(
+        'No puedes enviar una cotización para esta solicitud o tu perfil no está aprobado.',
+      );
+      return;
+    }
+
+    if (this.cotizacionForm.invalid) {
+      this.cotizacionForm.markAllAsTouched();
+      this.errorCotizacion.set(
+        'Revisa los campos obligatorios y los importes de la cotización.',
+      );
+      return;
+    }
+
+    const valores = this.cotizacionForm.getRawValue();
+
+    const payload: CrearCotizacionPayload = {
+      idSolicitud: solicitud.idSolicitud,
+      precioManoObra: Number(valores.precioManoObra),
+      precioMateriales: Number(valores.precioMateriales),
+      alcance: valores.alcance.trim(),
+      condiciones: valores.condiciones.trim() || undefined,
+    };
+
+    this.enviandoCotizacion.set(true);
+
+    this.quotationsService.crearCotizacion(payload).subscribe({
+      next: () => {
+        this.enviandoCotizacion.set(false);
+        this.cotizacionEnviada.set(true);
+        this.mensajeCotizacion.set(
+          '¡Cotización enviada correctamente! El cliente podrá revisarla y responder.',
+        );
+
+        this.buscar();
+      },
+      error: (err: unknown) => {
+        this.enviandoCotizacion.set(false);
+        this.errorCotizacion.set(
+          mensajeDeError(err, 'No se pudo enviar la cotización. Intenta nuevamente.'),
+        );
+      },
+    });
+  }
+
+  protected cargarVisitas(idSolicitud: string): void {
+    this.cargandoVisitas.set(true); this.errorVisitas.set('');
+    this.visitsService.listarPorSolicitud(idSolicitud).subscribe({
+      next: (l) => { this.visitas.set(l); this.cargandoVisitas.set(false); },
+      error: (e: unknown) => { this.cargandoVisitas.set(false); this.errorVisitas.set(mensajeDeError(e,'No se pudieron cargar las visitas previas.')); },
+    });
+  }
+  protected solicitarVisita(): void {
+    const sol=this.detalleSolicitud(); if(!sol||this.visitaForm.invalid||this.guardandoVisita()){this.visitaForm.markAllAsTouched(); return;}
+    const r=this.visitaForm.getRawValue(); this.guardandoVisita.set(true); this.errorVisitas.set('');
+    this.visitsService.crear({idSolicitud:sol.idSolicitud, fechaPropuesta:r.fechaPropuesta, horaPropuesta:r.horaPropuesta, resultado:r.resultado.trim()||undefined}).subscribe({
+      next:()=>{this.guardandoVisita.set(false); this.visitaForm.reset({fechaPropuesta:'',horaPropuesta:'',resultado:''}); this.cargarVisitas(sol.idSolicitud);},
+      error:(e:unknown)=>{this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(e,'No se pudo registrar la visita previa.'));},
+    });
+  }
+  protected responderVisita(v: VisitaPreviaItem, estado:'ACEPTADA'|'RECHAZADA'|'CANCELADA'|'REALIZADA'|'NO_REALIZADA'): void {
+    if(this.guardandoVisita()) return; this.guardandoVisita.set(true); this.errorVisitas.set('');
+    this.visitsService.responder(v.idVisita,{estado}).subscribe({
+      next:()=>{this.guardandoVisita.set(false); const id=this.detalleSolicitud()?.idSolicitud; if(id) this.cargarVisitas(id);},
+      error:(e:unknown)=>{this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(e,'No se pudo actualizar la visita previa.'));},
+    });
   }
 
   protected abrirWhatsapp(solicitud: SolicitudServicioItem): void {
@@ -131,10 +265,13 @@ export class WorkerRequestsComponent implements OnInit {
       PRIORIDAD_REDUCIDA: 'Prioridad reducida (3+ días)',
       EN_COTIZACION: 'En cotización',
     };
+
     return mapa[estado] ?? estado;
   }
 
   protected claseEstado(estado: string): string {
-    return estado === 'PRIORIDAD_REDUCIDA' ? 'badge badge--suspendido' : 'badge badge--activo';
+    return estado === 'PRIORIDAD_REDUCIDA'
+      ? 'badge badge--suspendido'
+      : 'badge badge--activo';
   }
 }

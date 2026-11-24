@@ -1,4 +1,4 @@
-import {
+﻿import {
   Column,
   CreateDateColumn,
   Entity,
@@ -6,6 +6,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Cotizacion } from './cotizacion.entity';
 import { ServicioProgramado } from './servicio-programado.entity';
 import { SolicitudServicio } from './solicitud-servicio.entity';
 
@@ -13,6 +14,13 @@ import { SolicitudServicio } from './solicitud-servicio.entity';
 export class Pago {
   @PrimaryGeneratedColumn('uuid', { name: 'id_pago' })
   idPago: string;
+
+  @ManyToOne(() => Cotizacion, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'id_cotizacion' })
+  cotizacion: Cotizacion | null;
 
   @ManyToOne(() => SolicitudServicio, { nullable: true })
   @JoinColumn({ name: 'id_solicitud' })

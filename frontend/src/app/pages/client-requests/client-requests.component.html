@@ -1,153 +1,136 @@
-<section class="page">
-  <div class="page__header">
+
+<div class="page-container">
+  <header class="page-header">
     <div>
       <span class="eyebrow">Panel del cliente · CU-01 y CU-14</span>
       <h1>Mis solicitudes de servicio</h1>
-      <p class="page__subtitle">
-        Publica tus necesidades domésticas con fotografías opcionales, revisa su vigencia (3 días
-        sin respuesta / 30 días máximo) y modifícalas o cancélalas antes de la contratación.
+      <p>
+        Publica tus necesidades domésticas, revisa las cotizaciones
+        y administra tus solicitudes de servicio.
       </p>
     </div>
 
-    <div class="page__actions">
-      <button class="btn btn--secondary btn--sm" type="button" (click)="cargarSolicitudes()">
+    <div class="header-actions">
+      <button type="button" class="btn btn-secondary" (click)="cargarSolicitudes()">
         Actualizar
       </button>
-      <button class="btn btn--primary" type="button" (click)="abrirNuevaSolicitud()">
+      <button type="button" class="btn btn-primary" (click)="abrirNuevaSolicitud()">
         + Nueva solicitud
       </button>
     </div>
-  </div>
+  </header>
 
   @if (mensajeExito()) {
-    <div class="alert alert--success" role="status">{{ mensajeExito() }}</div>
+    <div class="alert alert-success">{{ mensajeExito() }}</div>
   }
 
   @if (errorCarga()) {
-    <div class="alert alert--error" role="alert">{{ errorCarga() }}</div>
+    <div class="alert alert-error">{{ errorCarga() }}</div>
   }
 
-  <div class="stats-grid">
-    <article class="stat-card">
-      <span class="stat-card__label">Total</span>
-      <strong class="stat-card__value">{{ resumenEstados().total }}</strong>
+  <section class="summary-grid">
+    <article class="summary-card">
+      <span>Total</span>
+      <strong>{{ resumenEstados().total }}</strong>
     </article>
-    <article class="stat-card stat-card--success">
-      <span class="stat-card__label">Activas</span>
-      <strong class="stat-card__value">{{ resumenEstados().activas }}</strong>
+    <article class="summary-card">
+      <span>Activas</span>
+      <strong>{{ resumenEstados().activas }}</strong>
     </article>
-    <article class="stat-card stat-card--warning">
-      <span class="stat-card__label">Prioridad reducida</span>
-      <strong class="stat-card__value">{{ resumenEstados().prioridadReducida }}</strong>
+    <article class="summary-card">
+      <span>Prioridad reducida</span>
+      <strong>{{ resumenEstados().prioridadReducida }}</strong>
     </article>
-    <article class="stat-card stat-card--info">
-      <span class="stat-card__label">Programadas / Contratadas</span>
-      <strong class="stat-card__value">{{ resumenEstados().programadas }}</strong>
+    <article class="summary-card">
+      <span>Programadas / Contratadas</span>
+      <strong>{{ resumenEstados().programadas }}</strong>
     </article>
-  </div>
+  </section>
 
-  <div class="filter-bar">
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="filtroEstado() === ''"
-      (click)="seleccionarFiltro('')"
-    >
+  <nav class="filter-bar">
+    <button type="button" (click)="seleccionarFiltro('')"
+      [class.active]="filtroEstado() === ''">
       Todas ({{ resumenEstados().total }})
     </button>
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="filtroEstado() === 'ACTIVA'"
-      (click)="seleccionarFiltro('ACTIVA')"
-    >
+    <button type="button" (click)="seleccionarFiltro('ACTIVA')"
+      [class.active]="filtroEstado() === 'ACTIVA'">
       Activas
     </button>
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="filtroEstado() === 'PRIORIDAD_REDUCIDA'"
-      (click)="seleccionarFiltro('PRIORIDAD_REDUCIDA')"
-    >
+    <button type="button" (click)="seleccionarFiltro('PRIORIDAD_REDUCIDA')"
+      [class.active]="filtroEstado() === 'PRIORIDAD_REDUCIDA'">
       Prioridad reducida
     </button>
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="filtroEstado() === 'PROGRAMADA'"
-      (click)="seleccionarFiltro('PROGRAMADA')"
-    >
+    <button type="button" (click)="seleccionarFiltro('PROGRAMADA')"
+      [class.active]="filtroEstado() === 'PROGRAMADA'">
       Programadas
     </button>
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="filtroEstado() === 'CANCELADA'"
-      (click)="seleccionarFiltro('CANCELADA')"
-    >
+    <button type="button" (click)="seleccionarFiltro('CANCELADA')"
+      [class.active]="filtroEstado() === 'CANCELADA'">
       Canceladas
     </button>
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="filtroEstado() === 'VENCIDA'"
-      (click)="seleccionarFiltro('VENCIDA')"
-    >
+    <button type="button" (click)="seleccionarFiltro('VENCIDA')"
+      [class.active]="filtroEstado() === 'VENCIDA'">
       Vencidas
     </button>
-  </div>
+  </nav>
 
   @if (cargando()) {
-    <div class="card">
-      <div class="card__body empty-state">
-        <span class="spinner spinner--dark" aria-hidden="true"></span>
-        <p>Cargando tus solicitudes…</p>
-      </div>
-    </div>
+    <div class="loading-state">Cargando tus solicitudes...</div>
   } @else if (solicitudesFiltradas().length === 0) {
-    <div class="card">
-      <div class="card__body empty-state">
-        <strong>No hay solicitudes para mostrar</strong>
-        <p>
-          Publica una nueva solicitud de plomería, electricidad, albañilería o electrodomésticos
-          para que los trabajadores de tu zona puedan cotizarla.
-        </p>
-        <button class="btn btn--primary btn--sm" type="button" (click)="abrirNuevaSolicitud()">
-          Publicar mi primera solicitud
-        </button>
-      </div>
+    <div class="empty-state">
+      <h2>No hay solicitudes para mostrar</h2>
+      <p>
+        Publica una nueva solicitud de plomería, electricidad,
+        albañilería o reparación de electrodomésticos.
+      </p>
+      <button type="button" class="btn btn-primary"
+        (click)="abrirNuevaSolicitud()">
+        Publicar mi primera solicitud
+      </button>
     </div>
   } @else {
-    <div class="requests-grid">
+    <section class="requests-list">
       @for (sol of solicitudesFiltradas(); track sol.idSolicitud) {
-        <article class="card request-card">
-          <div class="request-card__top">
-            <div class="inline-stack">
-              <span class="chip chip--cliente">{{ sol.categoria?.nombre ?? 'Servicio' }}</span>
-              <span class="chip">{{ sol.zona?.nombre ?? 'Sin zona' }}</span>
-              <span class="request-ref">#{{ sol.referencia }}</span>
+        <article class="request-card">
+          <div class="request-card-header">
+            <div>
+              <span class="category-label">
+                {{ sol.categoria?.nombre ?? 'Servicio' }}
+              </span>
+              <span class="zone-label">
+                {{ sol.zona?.nombre ?? 'Sin zona' }}
+              </span>
+              <h2>Solicitud #{{ sol.referencia }}</h2>
             </div>
-            <span [class]="claseEstado(sol.estado)">{{ etiquetaEstado(sol.estado) }}</span>
+            <span [class]="claseEstado(sol.estado)">
+              {{ etiquetaEstado(sol.estado) }}
+            </span>
           </div>
 
-          <p class="request-card__desc">{{ sol.descripcion }}</p>
+          <p class="request-description">{{ sol.descripcion }}</p>
 
-          <dl class="request-meta">
+          <div class="request-information">
             <div>
-              <dt>Ubicación general</dt>
-              <dd>{{ sol.ubicacionGeneral }}</dd>
+              <small>Ubicación general</small>
+              <strong>{{ sol.ubicacionGeneral }}</strong>
             </div>
             <div>
-              <dt>Fecha preferida</dt>
-              <dd>{{ sol.fechaPreferida ? (sol.fechaPreferida | date: 'dd/MM/yyyy') : 'Flexible' }}</dd>
+              <small>Fecha preferida</small>
+              <strong>
+                {{ sol.fechaPreferida
+                  ? (sol.fechaPreferida | date:'dd/MM/yyyy')
+                  : 'Flexible' }}
+              </strong>
             </div>
             <div>
-              <dt>Publicada</dt>
-              <dd>{{ sol.fechaPublicacion | date: 'dd/MM/yyyy HH:mm' }}</dd>
+              <small>Publicada</small>
+              <strong>
+                {{ sol.fechaPublicacion | date:'dd/MM/yyyy HH:mm' }}
+              </strong>
             </div>
             <div>
-              <dt>Vigencia (máx. 30 días)</dt>
-              <dd>
+              <small>Vigencia</small>
+              <strong>
                 @if (sol.estado === 'VENCIDA') {
                   Caducada
                 } @else if (sol.estado === 'CANCELADA') {
@@ -155,234 +138,172 @@
                 } @else {
                   {{ sol.diasRestantes }} día(s) restantes
                 }
-              </dd>
+              </strong>
             </div>
-          </dl>
+          </div>
 
           @if (sol.prioridadReducida) {
-            <div class="alert alert--warning request-card__notice">
-              Esta solicitud superó los 3 días sin respuesta y perdió prioridad en el buscador.
-              Puedes editar sus detalles o cancelarla si ya no la necesitas.
+            <div class="alert alert-warning">
+              Esta solicitud superó los 3 días sin respuesta y perdió
+              prioridad en el buscador.
             </div>
           }
 
           @if (sol.programacion) {
-            <div class="alert alert--info request-card__notice">
-              <span>
-                Servicio programado con <strong>{{ sol.programacion.trabajadorNombre }}</strong> el
-                {{ sol.programacion.fechaServicio }} ({{ sol.programacion.horaInicio.slice(0, 5) }} -
-                {{ sol.programacion.horaFin.slice(0, 5) }}).
-              </span>
+            <div class="schedule-summary">
+              Servicio programado con {{ sol.programacion.trabajadorNombre }}
+              el {{ sol.programacion.fechaServicio }}
+              ({{ sol.programacion.horaInicio.slice(0, 5) }} -
+              {{ sol.programacion.horaFin.slice(0, 5) }}).
             </div>
           }
 
           @if (sol.fotografias.length > 0) {
-            <div class="photo-strip">
+            <div class="photo-list">
               @for (foto of sol.fotografias; track foto.rutaImagen) {
-                <a
-                  class="photo-thumb"
-                  [href]="requestsService.resolverUrlImagen(foto.rutaImagen)"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  [title]="foto.descripcion || 'Ver fotografía'"
-                >
-                  <img
-                    [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
-                    [alt]="foto.descripcion || 'Fotografía de solicitud'"
-                  />
-                </a>
+                <img [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                  alt="Fotografía de la solicitud">
               }
             </div>
           }
 
-          <div class="request-card__actions">
-            <button
-              type="button"
-              class="btn btn--secondary btn--sm"
-              (click)="abrirDetalle(sol)"
-              [disabled]="cargandoDetalle()"
-            >
+          <div class="card-actions">
+            <button type="button" class="btn btn-secondary"
+              (click)="abrirDetalle(sol)">
               Detalle e historial
             </button>
 
             @if (sol.puedeModificar) {
-              <button
-                type="button"
-                class="btn btn--ghost btn--sm"
-                (click)="abrirEditarSolicitud(sol)"
-              >
+              <button type="button" class="btn btn-secondary"
+                (click)="abrirEditarSolicitud(sol)">
                 Modificar
               </button>
             }
 
             @if (sol.puedeCancelar) {
-              <button
-                type="button"
-                class="btn btn--danger-ghost btn--sm"
-                (click)="abrirCancelar(sol)"
-              >
+              <button type="button" class="btn btn-danger"
+                (click)="abrirCancelar(sol)">
                 Cancelar
               </button>
             }
 
             @if (sol.programacion) {
-              <button
-                type="button"
-                class="btn btn--whatsapp btn--sm"
-                (click)="abrirWhatsapp(sol)"
-                [disabled]="cargandoWhatsapp()"
-              >
+              <button type="button" class="btn btn-whatsapp"
+                (click)="abrirWhatsapp(sol)">
                 WhatsApp
               </button>
             }
           </div>
         </article>
       }
-    </div>
+    </section>
   }
-</section>
 
-<!-- Modal Crear / Modificar Solicitud (CU-01 / CU-14) -->
-@if (modalFormAbierto()) {
-  <div class="modal-backdrop" (click)="cerrarModalForm()">
-    <div
-      class="modal modal--wide"
-      role="dialog"
-      aria-modal="true"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="modal__header">
-        <div>
-          <span class="eyebrow">{{ editandoId() ? 'CU-14 · Editar' : 'CU-01 · Publicar' }}</span>
-          <h2>{{ editandoId() ? 'Modificar solicitud de servicio' : 'Nueva solicitud de servicio' }}</h2>
-          <p>
-            Completa la información necesaria para que los trabajadores de tu zona comprendan el
-            trabajo requerido.
-          </p>
-        </div>
-        <button class="modal__close" type="button" (click)="cerrarModalForm()" aria-label="Cerrar">
-          ×
-        </button>
-      </div>
+  <!-- FORMULARIO DE CREACIÓN Y EDICIÓN -->
+  @if (modalFormAbierto()) {
+    <div class="modal-backdrop">
+      <section class="modal modal-large">
+        <header class="modal-header">
+          <div>
+            <span class="eyebrow">
+              {{ editandoId() ? 'CU-14 · Editar' : 'CU-01 · Publicar' }}
+            </span>
+            <h2>
+              {{ editandoId()
+                ? 'Modificar solicitud de servicio'
+                : 'Nueva solicitud de servicio' }}
+            </h2>
+          </div>
+          <button type="button" class="close-button"
+            (click)="cerrarModalForm()">×</button>
+        </header>
 
-      <form [formGroup]="formulario" (ngSubmit)="guardarSolicitud()">
-        <div class="modal__body stack">
-          @if (errorForm()) {
-            <div class="alert alert--error" role="alert">{{ errorForm() }}</div>
-          }
+        <p>
+          Completa la información necesaria para que los trabajadores
+          de tu zona comprendan el trabajo requerido.
+        </p>
 
-          <div class="form-grid">
-            <div class="field">
-              <label for="sol-categoria">Categoría / Especialidad *</label>
-              <select id="sol-categoria" formControlName="idCategoria">
-                <option [value]="0" disabled>Selecciona una categoría</option>
-                @for (cat of categorias(); track cat.idCategoria) {
-                  <option [value]="cat.idCategoria">{{ cat.nombre }}</option>
-                }
-              </select>
-            </div>
+        @if (errorForm()) {
+          <div class="alert alert-error">{{ errorForm() }}</div>
+        }
 
-            <div class="field">
-              <label for="sol-zona">Zona de atención *</label>
-              <select id="sol-zona" formControlName="idZona">
-                <option [value]="0" disabled>Selecciona una zona</option>
-                @for (z of zonas(); track z.idZona) {
-                  <option [value]="z.idZona">{{ z.nombre }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="sol-ubicacion">Ubicación general / Referencia *</label>
-              <input
-                id="sol-ubicacion"
-                type="text"
-                formControlName="ubicacionGeneral"
-                placeholder="Ej. Barrio Cala Cala, cerca de Av. América"
-                [class.invalid]="
-                  formulario.controls.ubicacionGeneral.touched &&
-                  formulario.controls.ubicacionGeneral.invalid
-                "
-              />
-              <span class="field__hint">
-                Por privacidad (RNF-02), indica solo una referencia general y evita publicar tu
-                dirección exacta aquí.
-              </span>
-            </div>
-
-            <div class="field">
-              <label for="sol-fecha">Fecha preferida (opcional)</label>
-              <input
-                id="sol-fecha"
-                type="date"
-                formControlName="fechaPreferida"
-                [min]="hoyIso"
-              />
-              <span class="field__hint">Si no eliges fecha, la atención quedará como flexible.</span>
-            </div>
-
-            <div class="field full">
-              <label for="sol-descripcion">Descripción del trabajo requerido *</label>
-              <textarea
-                id="sol-descripcion"
-                rows="4"
-                formControlName="descripcion"
-                placeholder="Describe el problema, materiales si los conoces o detalles importantes..."
-                [class.invalid]="
-                  formulario.controls.descripcion.touched &&
-                  formulario.controls.descripcion.invalid
-                "
-              ></textarea>
-              @if (
-                formulario.controls.descripcion.touched &&
-                formulario.controls.descripcion.invalid
-              ) {
-                <span class="field__error">
-                  Ingresa una descripción clara de al menos 10 caracteres.
-                </span>
+        <form [formGroup]="formulario" (ngSubmit)="guardarSolicitud()">
+          <div class="form-group">
+            <label for="categoria">Categoría / Especialidad *</label>
+            <select id="categoria" formControlName="idCategoria">
+              <option [ngValue]="0">Selecciona una categoría</option>
+              @for (cat of categorias(); track cat.idCategoria) {
+                <option [ngValue]="cat.idCategoria">{{ cat.nombre }}</option>
               }
-            </div>
+            </select>
           </div>
 
-          <div class="upload-section">
-            <div class="upload-section__header">
-              <div>
-                <strong>Fotografías opcionales ({{ fotosAdjuntas().length }}/5)</strong>
-                <p class="field__hint mb-0">
-                  Formatos JPG, PNG o WEBP (máximo 5 MB por archivo).
-                </p>
-              </div>
-              <label class="btn btn--secondary btn--sm upload-btn">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  (change)="alSeleccionarArchivo($event)"
-                  [disabled]="subiendoFoto() || fotosAdjuntas().length >= 5"
-                />
-                {{ subiendoFoto() ? 'Subiendo…' : '+ Adjuntar foto' }}
-              </label>
-            </div>
+          <div class="form-group">
+            <label for="zona">Zona de atención *</label>
+            <select id="zona" formControlName="idZona">
+              <option [ngValue]="0">Selecciona una zona</option>
+              @for (z of zonas(); track z.idZona) {
+                <option [ngValue]="z.idZona">{{ z.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="ubicacion">Ubicación general / Referencia *</label>
+            <input id="ubicacion" type="text"
+              formControlName="ubicacionGeneral"
+              placeholder="Ej. Barrio Cala Cala, cerca de Av. América">
+            <small>
+              Por privacidad, indica solo una referencia general.
+              No publiques tu dirección exacta.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="fecha">Fecha preferida (opcional)</label>
+            <input id="fecha" type="date"
+              formControlName="fechaPreferida">
+            <small>Si no eliges fecha, la atención quedará como flexible.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="descripcion">Descripción del trabajo requerido *</label>
+            <textarea id="descripcion" rows="5"
+              formControlName="descripcion"
+              placeholder="Describe el problema, materiales si los conoces o detalles importantes..."></textarea>
+
+            @if (formulario.controls.descripcion.touched &&
+                 formulario.controls.descripcion.invalid) {
+              <small class="field-error">
+                Ingresa una descripción clara de al menos 10 caracteres.
+              </small>
+            }
+          </div>
+
+          <div class="form-group">
+            <label>Fotografías opcionales ({{ fotosAdjuntas().length }}/5)</label>
+            <small>Formatos JPG, PNG o WEBP. Máximo 5 MB por archivo.</small>
+
+            <input type="file" accept="image/jpeg,image/png,image/webp"
+              (change)="alSeleccionarArchivo($event)"
+              [disabled]="subiendoFoto() || fotosAdjuntas().length >= 5">
+
+            @if (subiendoFoto()) {
+              <span>Subiendo fotografía...</span>
+            }
 
             @if (fotosAdjuntas().length > 0) {
-              <div class="uploaded-list">
+              <div class="attached-photos">
                 @for (foto of fotosAdjuntas(); track foto.rutaImagen; let idx = $index) {
-                  <div class="uploaded-item">
-                    <img
-                      [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
-                      alt="Vista previa"
-                    />
-                    <input
-                      type="text"
+                  <div class="attached-photo">
+                    <img [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                      alt="Vista previa">
+                    <input type="text"
                       [value]="foto.descripcion ?? ''"
-                      (input)="actualizarDescripcionFoto(idx, $any($event.target).value)"
                       placeholder="Nota opcional de la foto"
-                      maxlength="200"
-                    />
-                    <button
-                      type="button"
-                      class="btn btn--danger-ghost btn--sm"
-                      (click)="eliminarFoto(idx)"
-                    >
+                      (input)="actualizarDescripcionFoto(idx, $any($event.target).value)">
+                    <button type="button" class="btn btn-danger"
+                      (click)="eliminarFoto(idx)">
                       Quitar
                     </button>
                   </div>
@@ -390,224 +311,303 @@
               </div>
             }
           </div>
-        </div>
 
-        <div class="modal__footer">
-          <button
-            type="button"
-            class="btn btn--secondary"
-            (click)="cerrarModalForm()"
-            [disabled]="guardandoForm()"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            class="btn btn--primary"
-            [disabled]="guardandoForm() || subiendoFoto()"
-          >
-            @if (guardandoForm()) {
-              <span class="spinner" aria-hidden="true"></span>
-            }
-            {{ editandoId() ? 'Guardar cambios' : 'Publicar solicitud' }}
-          </button>
-        </div>
-      </form>
+          <footer class="modal-actions">
+            <button type="button" class="btn btn-secondary"
+              (click)="cerrarModalForm()">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary"
+              [disabled]="guardandoForm() || subiendoFoto()">
+              {{ guardandoForm()
+                ? 'Guardando...'
+                : (editandoId() ? 'Guardar cambios' : 'Publicar solicitud') }}
+            </button>
+          </footer>
+        </form>
+      </section>
     </div>
-  </div>
-}
+  }
 
-<!-- Modal Detalle e Historial -->
-@if (detalleAbierto(); as detalle) {
-  <div class="modal-backdrop" (click)="cerrarDetalle()">
-    <div
-      class="modal modal--wide"
-      role="dialog"
-      aria-modal="true"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="modal__header">
-        <div>
-          <span class="eyebrow">Solicitud #{{ detalle.referencia }}</span>
-          <h2>{{ detalle.categoria?.nombre ?? 'Servicio' }} · {{ detalle.zona?.nombre ?? '' }}</h2>
-        </div>
-        <button class="modal__close" type="button" (click)="cerrarDetalle()" aria-label="Cerrar">
-          ×
-        </button>
-      </div>
+  <!-- DETALLE, COTIZACIONES E HISTORIAL -->
+  @if (detalleAbierto(); as detalle) {
+    <div class="modal-backdrop">
+      <section class="modal modal-large">
+        <header class="modal-header">
+          <div>
+            <span class="eyebrow">Detalle de solicitud</span>
+            <h2>Solicitud #{{ detalle.referencia }}</h2>
+          </div>
+          <button type="button" class="close-button"
+            (click)="cerrarDetalle()">×</button>
+        </header>
 
-      <div class="modal__body stack">
-        <div class="inline-stack">
-          <span [class]="claseEstado(detalle.estado)">{{ etiquetaEstado(detalle.estado) }}</span>
-          <span class="chip">Publicada: {{ detalle.fechaPublicacion | date: 'dd/MM/yyyy HH:mm' }}</span>
+        <p>
+          {{ detalle.categoria?.nombre ?? 'Servicio' }}
+          · {{ detalle.zona?.nombre ?? '' }}
+        </p>
+
+        <span [class]="claseEstado(detalle.estado)">
+          {{ etiquetaEstado(detalle.estado) }}
+        </span>
+
+        <div class="detail-grid">
+          <div>
+            <small>Publicada</small>
+            <strong>{{ detalle.fechaPublicacion | date:'dd/MM/yyyy HH:mm' }}</strong>
+          </div>
           @if (detalle.fechaVencimiento) {
-            <span class="chip">Vence: {{ detalle.fechaVencimiento | date: 'dd/MM/yyyy' }}</span>
+            <div>
+              <small>Vence</small>
+              <strong>{{ detalle.fechaVencimiento | date:'dd/MM/yyyy' }}</strong>
+            </div>
           }
         </div>
 
-        <div>
-          <h3 class="detail-heading">Descripción</h3>
-          <p class="mb-0">{{ detalle.descripcion }}</p>
-        </div>
+        <h3>Descripción</h3>
+        <p>{{ detalle.descripcion }}</p>
 
-        <div>
-          <h3 class="detail-heading">Ubicación general</h3>
-          <p class="mb-0">{{ detalle.ubicacionGeneral }}</p>
-        </div>
+        <h3>Ubicación general</h3>
+        <p>{{ detalle.ubicacionGeneral }}</p>
 
         @if (detalle.fotografias.length > 0) {
-          <div>
-            <h3 class="detail-heading">Fotografías adjuntas</h3>
-            <div class="photo-gallery">
-              @for (foto of detalle.fotografias; track foto.rutaImagen) {
-                <figure class="photo-gallery__item">
-                  <a
-                    [href]="requestsService.resolverUrlImagen(foto.rutaImagen)"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <img
-                      [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
-                      [alt]="foto.descripcion || 'Fotografía'"
-                    />
-                  </a>
-                  @if (foto.descripcion) {
-                    <figcaption>{{ foto.descripcion }}</figcaption>
-                  }
-                </figure>
-              }
-            </div>
+          <h3>Fotografías adjuntas</h3>
+          <div class="photo-list">
+            @for (foto of detalle.fotografias; track foto.rutaImagen) {
+              <figure>
+                <img [src]="requestsService.resolverUrlImagen(foto.rutaImagen)"
+                  alt="Fotografía adjunta">
+                @if (foto.descripcion) {
+                  <figcaption>{{ foto.descripcion }}</figcaption>
+                }
+              </figure>
+            }
           </div>
         }
 
-        <div>
-          <h3 class="detail-heading">Historial de eventos</h3>
-          @if (detalle.historial.length === 0) {
-            <p class="text-muted mb-0">Sin eventos registrados.</p>
+                <section class="quotation-section">
+          <header class="section-heading">
+            <div><span class="eyebrow">Visitas previas</span><h3>Visitas previas</h3></div>
+            <button type="button" class="btn btn-secondary" (click)="cargarVisitas(detalle.idSolicitud)">Actualizar</button>
+          </header>
+          @if (errorVisitas()) { <div class="alert alert-error">{{ errorVisitas() }}</div> }
+          <form [formGroup]="visitaForm" (ngSubmit)="solicitarVisita()" class="quotation-card">
+            <div class="price-grid">
+              <label>Fecha<input type="date" formControlName="fechaPropuesta"></label>
+              <label>Hora<input type="time" formControlName="horaPropuesta"></label>
+              <label>Nota<input type="text" formControlName="resultado" placeholder="Opcional"></label>
+            </div>
+            <div class="quotation-actions"><button type="submit" class="btn btn-primary" [disabled]="guardandoVisita()">{{ guardandoVisita() ? 'Guardando...' : 'Solicitar visita' }}</button></div>
+          </form>
+          @if (cargandoVisitas()) { <p>Cargando visitas...</p> }
+          @else if (visitas().length === 0) { <p>No hay visitas previas registradas.</p> }
+          @else { @for (v of visitas(); track v.idVisita) {
+            <article class="quotation-card">
+              <header><div><h4>{{ v.fechaPropuesta }} {{ v.horaPropuesta.slice(0,5) }}</h4><small>{{ v.trabajador ? (v.trabajador.nombres + ' ' + v.trabajador.apellidos) : 'Sin trabajador asignado' }}</small></div><span class="status-label">{{ v.estado }}</span></header>
+              @if (v.resultado) { <p>{{ v.resultado }}</p> }
+              @if (v.estado === 'SOLICITADA' || v.estado === 'ACEPTADA') {
+                <div class="quotation-actions">
+                  @if (v.estado === 'SOLICITADA') { <button type="button" class="btn btn-primary" [disabled]="guardandoVisita()" (click)="responderVisita(v,'ACEPTADA')">Aceptar</button> }
+                  <button type="button" class="btn btn-danger" [disabled]="guardandoVisita()" (click)="responderVisita(v,'RECHAZADA')">Rechazar</button>
+                  <button type="button" class="btn btn-secondary" [disabled]="guardandoVisita()" (click)="responderVisita(v,'CANCELADA')">Cancelar</button>
+                </div>
+              }
+            </article>
+          } }
+        </section>
+
+<section class="quotation-section">
+          <header class="section-heading">
+            <div>
+              <span class="eyebrow">CU-02 · Cotizaciones</span>
+              <h3>Cotizaciones recibidas</h3>
+            </div>
+            <button type="button" class="btn btn-secondary"
+              (click)="cargarCotizaciones(detalle.idSolicitud)">
+              Actualizar
+            </button>
+          </header>
+
+          @if (cargandoCotizaciones()) {
+            <p>Cargando cotizaciones...</p>
+          } @else if (errorCotizaciones()) {
+            <div class="alert alert-error">{{ errorCotizaciones() }}</div>
+          } @else if (cotizaciones().length === 0) {
+            <div class="empty-state">
+              Todavía no recibiste cotizaciones para esta solicitud.
+            </div>
           } @else {
-            <ul class="history-list">
-              @for (ev of detalle.historial; track ev.idEvento) {
-                <li>
-                  <div class="history-list__head">
-                    <strong>{{ etiquetaEvento(ev.tipoEvento) }}</strong>
-                    <span>{{ ev.fechaEvento | date: 'dd/MM/yyyy HH:mm' }}</span>
+            @for (cotizacion of cotizaciones(); track cotizacion.idCotizacion) {
+              <article class="quotation-card">
+                <header>
+                  <div>
+                    <h4>
+                      {{ cotizacion.trabajador?.nombres ?? 'Trabajador' }}
+                      {{ cotizacion.trabajador?.apellidos ?? '' }}
+                    </h4>
+                    @if (cotizacion.trabajador?.anosExperiencia !== null &&
+                         cotizacion.trabajador?.anosExperiencia !== undefined) {
+                      <small>
+                        {{ cotizacion.trabajador.anosExperiencia }}
+                        años de experiencia
+                      </small>
+                    }
                   </div>
-                  <p class="field__hint mb-0">
+                  <span class="status-label">{{ cotizacion.estado }}</span>
+                </header>
+
+                @if (cotizacion.trabajador?.descripcion) {
+                  <p>{{ cotizacion.trabajador.descripcion }}</p>
+                }
+
+                <div class="price-grid">
+                  <div>
+                    <small>Mano de obra</small>
+                    <strong>Bs. {{ cotizacion.precioManoObra }}</strong>
+                  </div>
+                  <div>
+                    <small>Materiales</small>
+                    <strong>Bs. {{ cotizacion.precioMateriales }}</strong>
+                  </div>
+                  <div>
+                    <small>Precio total</small>
+                    <strong>Bs. {{ cotizacion.precioTotal }}</strong>
+                  </div>
+                </div>
+
+                <h4>Alcance del trabajo</h4>
+                <p>{{ cotizacion.alcance }}</p>
+
+                @if (cotizacion.condiciones) {
+                  <h4>Condiciones</h4>
+                  <p>{{ cotizacion.condiciones }}</p>
+                }
+
+                <small>
+                  Enviada: {{ cotizacion.fechaEnvio | date:'dd/MM/yyyy HH:mm' }}
+                </small>
+
+                @if (cotizacion.estado === 'ENVIADA') {
+                  <div class="quotation-actions">
+                    <button type="button" class="btn btn-primary"
+                      [disabled]="cotizacionRespondiendo() !== null"
+                      (click)="responderCotizacion(cotizacion, 'ACEPTADA')">
+                      {{ cotizacionRespondiendo() === cotizacion.idCotizacion
+                        ? 'Procesando...' : 'Aceptar cotización' }}
+                    </button>
+                    <button type="button" class="btn btn-danger"
+                      [disabled]="cotizacionRespondiendo() !== null"
+                      (click)="responderCotizacion(cotizacion, 'RECHAZADA')">
+                      Rechazar
+                    </button>
+                  </div>
+                }
+              </article>
+            }
+          }
+        </section>
+
+        <section class="history-section">
+          <h3>Historial de eventos</h3>
+
+          @if (detalle.historial.length === 0) {
+            <p>Sin eventos registrados.</p>
+          } @else {
+            <div class="history-list">
+              @for (ev of detalle.historial; track ev.idEvento) {
+                <article class="history-item">
+                  <strong>{{ etiquetaEvento(ev.tipoEvento) }}</strong>
+                  <small>{{ ev.fechaEvento | date:'dd/MM/yyyy HH:mm' }}</small>
+                  <p>
                     Responsable: {{ ev.actorNombre ?? 'Sistema' }}
                     @if (ev.estadoNuevo) {
                       · Estado: {{ etiquetaEstado(ev.estadoNuevo) }}
                     }
                   </p>
-                </li>
+                </article>
               }
-            </ul>
+            </div>
           }
-        </div>
-      </div>
+        </section>
 
-      <div class="modal__footer">
-        <button type="button" class="btn btn--secondary" (click)="cerrarDetalle()">Cerrar</button>
-      </div>
+        <footer class="modal-actions">
+          <button type="button" class="btn btn-secondary"
+            (click)="cerrarDetalle()">Cerrar</button>
+        </footer>
+      </section>
     </div>
-  </div>
-}
+  }
 
-<!-- Modal Confirmar Cancelación (CU-14) -->
-@if (solicitudACancelar(); as objetivo) {
-  <div class="modal-backdrop" (click)="cerrarCancelar()">
-    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-      <div class="modal__header">
-        <div>
-          <span class="eyebrow">CU-14 · Cancelación</span>
-          <h2>Cancelar solicitud #{{ objetivo.referencia }}</h2>
-        </div>
-        <button class="modal__close" type="button" (click)="cerrarCancelar()" aria-label="Cerrar">
-          ×
-        </button>
-      </div>
+  <!-- MODAL DE CANCELACIÓN -->
+  @if (solicitudACancelar(); as objetivo) {
+    <div class="modal-backdrop">
+      <section class="modal">
+        <header class="modal-header">
+          <div>
+            <span class="eyebrow">CU-14 · Cancelación</span>
+            <h2>Cancelar solicitud #{{ objetivo.referencia }}</h2>
+          </div>
+          <button type="button" class="close-button"
+            (click)="cerrarCancelar()">×</button>
+        </header>
 
-      <form [formGroup]="formCancelar" (ngSubmit)="confirmarCancelacion()">
-        <div class="modal__body stack">
-          @if (errorCancelar()) {
-            <div class="alert alert--error" role="alert">{{ errorCancelar() }}</div>
-          }
+        @if (errorCancelar()) {
+          <div class="alert alert-error">{{ errorCancelar() }}</div>
+        }
 
-          <div class="alert alert--warning">
-            <span>
-              Esta acción marcará la solicitud como <strong>Cancelada</strong> y dejará de estar
-              disponible para nuevos trabajadores. El historial se conservará para trazabilidad.
-            </span>
+        <p>
+          Esta acción marcará la solicitud como Cancelada y dejará
+          de estar disponible para nuevos trabajadores. El historial
+          se conservará para trazabilidad.
+        </p>
+
+        <form [formGroup]="formCancelar" (ngSubmit)="confirmarCancelacion()">
+          <div class="form-group">
+            <label for="motivo">Motivo de cancelación (opcional)</label>
+            <textarea id="motivo" rows="3" formControlName="motivo"
+              placeholder="Ej. Cambiaron mis planes o ya resolví el problema..."></textarea>
           </div>
 
-          <div class="field">
-            <label for="cancel-motivo">Motivo de cancelación (opcional)</label>
-            <textarea
-              id="cancel-motivo"
-              rows="3"
-              formControlName="motivo"
-              placeholder="Ej. Cambiaron mis planes o ya resolví el problema..."
-            ></textarea>
+          <footer class="modal-actions">
+            <button type="button" class="btn btn-secondary"
+              (click)="cerrarCancelar()">Volver</button>
+            <button type="submit" class="btn btn-danger"
+              [disabled]="cancelando()">
+              {{ cancelando() ? 'Cancelando...' : 'Confirmar cancelación' }}
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  }
+
+  <!-- MODAL DE WHATSAPP -->
+  @if (whatsappModal(); as wa) {
+    <div class="modal-backdrop">
+      <section class="modal">
+        <header class="modal-header">
+          <div>
+            <span class="eyebrow">CU-25 · Contacto externo</span>
+            <h2>Abrir WhatsApp con {{ wa.destinatarioNombre }}</h2>
           </div>
-        </div>
+          <button type="button" class="close-button"
+            (click)="cerrarWhatsapp()">×</button>
+        </header>
 
-        <div class="modal__footer">
-          <button
-            type="button"
-            class="btn btn--secondary"
-            (click)="cerrarCancelar()"
-            [disabled]="cancelando()"
-          >
-            Volver
-          </button>
-          <button type="submit" class="btn btn--danger" [disabled]="cancelando()">
-            @if (cancelando()) {
-              <span class="spinner" aria-hidden="true"></span>
-            }
-            Confirmar cancelación
-          </button>
-        </div>
-      </form>
+        <p>{{ wa.advertencia }}</p>
+        <p>Mensaje prellenado para la solicitud #{{ wa.referenciaSolicitud }}:</p>
+        <div class="message-preview">{{ wa.mensajePrellenado }}</div>
+
+        <footer class="modal-actions">
+          <button type="button" class="btn btn-secondary"
+            (click)="cerrarWhatsapp()">Cancelar</button>
+          <a class="btn btn-whatsapp" [href]="wa.url" target="_blank"
+            rel="noopener noreferrer">
+            Continuar a WhatsApp →
+          </a>
+        </footer>
+      </section>
     </div>
-  </div>
-}
+  }
+</div>
 
-<!-- Modal Advertencia WhatsApp (CU-25 / HU-F20 / RNF-09) -->
-@if (whatsappModal(); as wa) {
-  <div class="modal-backdrop" (click)="cerrarWhatsapp()">
-    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-      <div class="modal__header">
-        <div>
-          <span class="eyebrow">CU-25 · Contacto externo</span>
-          <h2>Abrir WhatsApp con {{ wa.destinatarioNombre }}</h2>
-        </div>
-        <button class="modal__close" type="button" (click)="cerrarWhatsapp()" aria-label="Cerrar">
-          ×
-        </button>
-      </div>
-
-      <div class="modal__body stack">
-        <div class="alert alert--warning" role="alert">
-          {{ wa.advertencia }}
-        </div>
-
-        <div class="wa-preview">
-          <span class="field__hint">Mensaje prellenado para la solicitud #{{ wa.referenciaSolicitud }}:</span>
-          <p class="mb-0">{{ wa.mensajePrellenado }}</p>
-        </div>
-      </div>
-
-      <div class="modal__footer">
-        <button type="button" class="btn btn--secondary" (click)="cerrarWhatsapp()">Cancelar</button>
-        <a
-          class="btn btn--whatsapp"
-          [href]="wa.url"
-          target="_blank"
-          rel="noopener noreferrer"
-          (click)="cerrarWhatsapp()"
-        >
-          Continuar a WhatsApp ↗
-        </a>
-      </div>
-    </div>
-  </div>
-}

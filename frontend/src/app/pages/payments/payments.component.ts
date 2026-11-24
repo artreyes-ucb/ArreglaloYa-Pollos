@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
@@ -26,7 +26,7 @@ type ModalTipo =
 
 @Component({
   selector: 'app-payments',
-  imports: [ReactiveFormsModule, DatePipe, DecimalPipe],
+  imports: [ReactiveFormsModule, DecimalPipe],
   templateUrl: './payments.component.html',
   styleUrl: './payments.component.css',
 })

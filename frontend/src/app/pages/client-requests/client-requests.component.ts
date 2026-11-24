@@ -1,6 +1,8 @@
+
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+
 import {
   CategoriaServicioItem,
   FotografiaSolicitudPayload,
@@ -9,8 +11,17 @@ import {
   WhatsappLinkResponse,
   ZonaItem,
 } from '../../core/models/requests.models';
+
+import {
+  CotizacionItem,
+  DecisionCotizacion,
+} from '../../core/models/quotations.models';
+import { VisitaPreviaItem } from '../../core/models/visits.models';
+
 import { NotificationsService } from '../../core/services/notifications.service';
+import { QuotationsService } from '../../core/services/quotations.service';
 import { RequestsService } from '../../core/services/requests.service';
+import { VisitsService } from '../../core/services/visits.service';
 import { mensajeDeError } from '../../core/utils/http-error.util';
 
 @Component({
@@ -21,8 +32,11 @@ import { mensajeDeError } from '../../core/utils/http-error.util';
 })
 export class ClientRequestsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
+
   protected readonly requestsService = inject(RequestsService);
   private readonly notificationsService = inject(NotificationsService);
+  private readonly quotationsService = inject(QuotationsService);
+  private readonly visitsService = inject(VisitsService);
 
   protected readonly categorias = signal<CategoriaServicioItem[]>([]);
   protected readonly zonas = signal<ZonaItem[]>([]);
@@ -44,6 +58,23 @@ export class ClientRequestsComponent implements OnInit {
   protected readonly detalleAbierto = signal<SolicitudServicioDetalle | null>(null);
   protected readonly cargandoDetalle = signal(false);
 
+  // Cotizaciones recibidas
+  protected readonly cotizaciones = signal<CotizacionItem[]>([]);
+  protected readonly cargandoCotizaciones = signal(false);
+  protected readonly errorCotizaciones = signal('');
+  protected readonly cotizacionRespondiendo = signal<string | null>(null);
+
+  // Visitas previas
+  protected readonly visitas = signal<VisitaPreviaItem[]>([]);
+  protected readonly cargandoVisitas = signal(false);
+  protected readonly errorVisitas = signal('');
+  protected readonly guardandoVisita = signal(false);
+  protected readonly visitaForm = this.fb.nonNullable.group({
+    fechaPropuesta: ['', [Validators.required]],
+    horaPropuesta: ['', [Validators.required]],
+    resultado: [''],
+  });
+
   // Modal cancelar
   protected readonly solicitudACancelar = signal<SolicitudServicioItem | null>(null);
   protected readonly cancelando = signal(false);
@@ -59,9 +90,23 @@ export class ClientRequestsComponent implements OnInit {
   protected readonly formulario = this.fb.nonNullable.group({
     idCategoria: [0, [Validators.required, Validators.min(1)]],
     idZona: [0, [Validators.required, Validators.min(1)]],
-    ubicacionGeneral: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(200)]],
+    ubicacionGeneral: [
+      '',
+      [
+        Validators.required,
+        Validators.minLength(3),
+        Validators.maxLength(200),
+      ],
+    ],
     fechaPreferida: [''],
-    descripcion: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]],
+    descripcion: [
+      '',
+      [
+        Validators.required,
+        Validators.minLength(10),
+        Validators.maxLength(2000),
+      ],
+    ],
   });
 
   protected readonly formCancelar = this.fb.nonNullable.group({
@@ -70,22 +115,34 @@ export class ClientRequestsComponent implements OnInit {
 
   protected readonly resumenEstados = computed(() => {
     const lista = this.solicitudes();
+
     return {
       total: lista.length,
-      activas: lista.filter((s) => s.estado === 'ACTIVA' || s.estado === 'EN_COTIZACION').length,
-      prioridadReducida: lista.filter((s) => s.estado === 'PRIORIDAD_REDUCIDA').length,
-      programadas: lista.filter((s) => s.estado === 'PROGRAMADA' || s.estado === 'CONTRATADA').length,
+      activas: lista.filter(
+        (s) => s.estado === 'ACTIVA' || s.estado === 'EN_COTIZACION',
+      ).length,
+      prioridadReducida: lista.filter(
+        (s) => s.estado === 'PRIORIDAD_REDUCIDA',
+      ).length,
+      programadas: lista.filter(
+        (s) => s.estado === 'PROGRAMADA' || s.estado === 'CONTRATADA',
+      ).length,
       cerradas: lista.filter(
-        (s) => s.estado === 'CANCELADA' || s.estado === 'VENCIDA' || s.estado === 'COMPLETADA',
+        (s) =>
+          s.estado === 'CANCELADA' ||
+          s.estado === 'VENCIDA' ||
+          s.estado === 'COMPLETADA',
       ).length,
     };
   });
 
   protected readonly solicitudesFiltradas = computed(() => {
     const filtro = this.filtroEstado();
+
     if (!filtro) {
       return this.solicitudes();
     }
+
     return this.solicitudes().filter((s) => s.estado === filtro);
   });
 
@@ -101,7 +158,7 @@ export class ClientRequestsComponent implements OnInit {
         this.zonas.set(res.zonas);
       },
       error: () => {
-        // El error principal se mostrará al intentar publicar si falló el catálogo
+        // El error principal se mostrará al intentar publicar si falló el catálogo.
       },
     });
   }
@@ -117,7 +174,9 @@ export class ClientRequestsComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.cargando.set(false);
-        this.errorCarga.set(mensajeDeError(err, 'No se pudieron cargar tus solicitudes.'));
+        this.errorCarga.set(
+          mensajeDeError(err, 'No se pudieron cargar tus solicitudes.'),
+        );
       },
     });
   }
@@ -130,6 +189,7 @@ export class ClientRequestsComponent implements OnInit {
     this.editandoId.set(null);
     this.errorForm.set('');
     this.fotosAdjuntas.set([]);
+
     this.formulario.reset({
       idCategoria: this.categorias()[0]?.idCategoria ?? 0,
       idZona: this.zonas()[0]?.idZona ?? 0,
@@ -137,6 +197,7 @@ export class ClientRequestsComponent implements OnInit {
       fechaPreferida: '',
       descripcion: '',
     });
+
     this.modalFormAbierto.set(true);
   }
 
@@ -147,12 +208,14 @@ export class ClientRequestsComponent implements OnInit {
 
     this.editandoId.set(solicitud.idSolicitud);
     this.errorForm.set('');
+
     this.fotosAdjuntas.set(
       solicitud.fotografias.map((f) => ({
         rutaImagen: f.rutaImagen,
         descripcion: f.descripcion ?? undefined,
       })),
     );
+
     this.formulario.reset({
       idCategoria: solicitud.categoria?.idCategoria ?? 0,
       idZona: solicitud.zona?.idZona ?? 0,
@@ -160,6 +223,7 @@ export class ClientRequestsComponent implements OnInit {
       fechaPreferida: solicitud.fechaPreferida ?? '',
       descripcion: solicitud.descripcion,
     });
+
     this.modalFormAbierto.set(true);
   }
 
@@ -167,12 +231,14 @@ export class ClientRequestsComponent implements OnInit {
     if (this.guardandoForm()) {
       return;
     }
+
     this.modalFormAbierto.set(false);
   }
 
   protected alSeleccionarArchivo(event: Event): void {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
+
     input.value = '';
 
     if (!archivo) {
@@ -180,7 +246,9 @@ export class ClientRequestsComponent implements OnInit {
     }
 
     if (this.fotosAdjuntas().length >= 5) {
-      this.errorForm.set('Puedes adjuntar como máximo 5 fotografías por solicitud.');
+      this.errorForm.set(
+        'Puedes adjuntar como máximo 5 fotografías por solicitud.',
+      );
       return;
     }
 
@@ -191,24 +259,34 @@ export class ClientRequestsComponent implements OnInit {
       next: (res) => {
         this.fotosAdjuntas.update((actuales) => [
           ...actuales,
-          { rutaImagen: res.rutaImagen, descripcion: res.nombreOriginal },
+          {
+            rutaImagen: res.rutaImagen,
+            descripcion: res.nombreOriginal,
+          },
         ]);
+
         this.subiendoFoto.set(false);
       },
       error: (err: unknown) => {
         this.subiendoFoto.set(false);
-        this.errorForm.set(mensajeDeError(err, 'No se pudo subir la fotografía.'));
+        this.errorForm.set(
+          mensajeDeError(err, 'No se pudo subir la fotografía.'),
+        );
       },
     });
   }
 
   protected eliminarFoto(indice: number): void {
-    this.fotosAdjuntas.update((actuales) => actuales.filter((_, i) => i !== indice));
+    this.fotosAdjuntas.update((actuales) =>
+      actuales.filter((_, i) => i !== indice),
+    );
   }
 
   protected actualizarDescripcionFoto(indice: number, valor: string): void {
     this.fotosAdjuntas.update((actuales) =>
-      actuales.map((foto, i) => (i === indice ? { ...foto, descripcion: valor } : foto)),
+      actuales.map((foto, i) =>
+        i === indice ? { ...foto, descripcion: valor } : foto,
+      ),
     );
   }
 
@@ -219,14 +297,18 @@ export class ClientRequestsComponent implements OnInit {
     }
 
     const raw = this.formulario.getRawValue();
+
     this.guardandoForm.set(true);
     this.errorForm.set('');
     this.mensajeExito.set('');
 
     const editId = this.editandoId();
+
     const fotos = this.fotosAdjuntas().map((f) => ({
       rutaImagen: f.rutaImagen,
-      ...(f.descripcion?.trim() ? { descripcion: f.descripcion.trim() } : {}),
+      ...(f.descripcion?.trim()
+        ? { descripcion: f.descripcion.trim() }
+        : {}),
     }));
 
     if (!editId) {
@@ -236,24 +318,31 @@ export class ClientRequestsComponent implements OnInit {
           idZona: Number(raw.idZona),
           ubicacionGeneral: raw.ubicacionGeneral.trim(),
           descripcion: raw.descripcion.trim(),
-          ...(raw.fechaPreferida ? { fechaPreferida: raw.fechaPreferida } : {}),
+          ...(raw.fechaPreferida
+            ? { fechaPreferida: raw.fechaPreferida }
+            : {}),
           ...(fotos.length > 0 ? { fotografias: fotos } : {}),
         })
         .subscribe({
           next: (creada) => {
             this.guardandoForm.set(false);
             this.modalFormAbierto.set(false);
+
             this.mensajeExito.set(
               `Solicitud #${creada.referencia} publicada correctamente. Vigente por 30 días.`,
             );
+
             this.cargarSolicitudes();
             this.notificationsService.refrescarContador();
           },
           error: (err: unknown) => {
             this.guardandoForm.set(false);
-            this.errorForm.set(mensajeDeError(err, 'No se pudo publicar la solicitud.'));
+            this.errorForm.set(
+              mensajeDeError(err, 'No se pudo publicar la solicitud.'),
+            );
           },
         });
+
       return;
     }
 
@@ -263,42 +352,180 @@ export class ClientRequestsComponent implements OnInit {
         idZona: Number(raw.idZona),
         ubicacionGeneral: raw.ubicacionGeneral.trim(),
         descripcion: raw.descripcion.trim(),
-        fechaPreferida: raw.fechaPreferida ? raw.fechaPreferida : null,
+        fechaPreferida: raw.fechaPreferida
+          ? raw.fechaPreferida
+          : null,
         fotografias: fotos,
       })
       .subscribe({
         next: (actualizada) => {
           this.guardandoForm.set(false);
           this.modalFormAbierto.set(false);
-          this.mensajeExito.set(`Solicitud #${actualizada.referencia} actualizada correctamente.`);
+
+          this.mensajeExito.set(
+            `Solicitud #${actualizada.referencia} actualizada correctamente.`,
+          );
+
           this.cargarSolicitudes();
           this.notificationsService.refrescarContador();
         },
         error: (err: unknown) => {
           this.guardandoForm.set(false);
-          this.errorForm.set(mensajeDeError(err, 'No se pudo actualizar la solicitud.'));
+          this.errorForm.set(
+            mensajeDeError(err, 'No se pudo actualizar la solicitud.'),
+          );
         },
       });
   }
 
+  // Detalle de solicitud e historial
   protected abrirDetalle(solicitud: SolicitudServicioItem): void {
     this.cargandoDetalle.set(true);
+    this.cotizaciones.set([]);
+    this.errorCotizaciones.set('');
+    this.visitas.set([]);
+    this.errorVisitas.set('');
+
     this.requestsService.obtenerDetalle(solicitud.idSolicitud).subscribe({
       next: (detalle) => {
         this.detalleAbierto.set(detalle);
         this.cargandoDetalle.set(false);
+        this.cargarCotizaciones(detalle.idSolicitud);
+        this.cargarVisitas(detalle.idSolicitud);
       },
       error: (err: unknown) => {
         this.cargandoDetalle.set(false);
-        this.errorCarga.set(mensajeDeError(err, 'No se pudo cargar el detalle de la solicitud.'));
+        this.errorCarga.set(
+          mensajeDeError(
+            err,
+            'No se pudo cargar el detalle de la solicitud.',
+          ),
+        );
       },
     });
   }
 
   protected cerrarDetalle(): void {
     this.detalleAbierto.set(null);
+    this.cotizaciones.set([]);
+    this.errorCotizaciones.set('');
+    this.visitas.set([]);
+    this.errorVisitas.set('');
   }
 
+  // Consultar cotizaciones recibidas
+  protected cargarCotizaciones(idSolicitud: string): void {
+    this.cargandoCotizaciones.set(true);
+    this.errorCotizaciones.set('');
+
+    this.quotationsService.listarPorSolicitud(idSolicitud).subscribe({
+      next: (lista) => {
+        this.cotizaciones.set(lista);
+        this.cargandoCotizaciones.set(false);
+      },
+      error: (err: unknown) => {
+        this.cargandoCotizaciones.set(false);
+        this.errorCotizaciones.set(
+          mensajeDeError(
+            err,
+            'No se pudieron cargar las cotizaciones.',
+          ),
+        );
+      },
+    });
+  }
+
+  // Aceptar o rechazar cotización
+  protected cargarVisitas(idSolicitud: string): void {
+    this.cargandoVisitas.set(true);
+    this.errorVisitas.set('');
+    this.visitsService.listarPorSolicitud(idSolicitud).subscribe({
+      next: (lista) => { this.visitas.set(lista); this.cargandoVisitas.set(false); },
+      error: (err: unknown) => { this.cargandoVisitas.set(false); this.errorVisitas.set(mensajeDeError(err, 'No se pudieron cargar las visitas previas.')); },
+    });
+  }
+
+  protected solicitarVisita(): void {
+    const detalle = this.detalleAbierto();
+    if (!detalle || this.visitaForm.invalid || this.guardandoVisita()) { this.visitaForm.markAllAsTouched(); return; }
+    const raw = this.visitaForm.getRawValue();
+    this.guardandoVisita.set(true);
+    this.errorVisitas.set('');
+    this.visitsService.crear({ idSolicitud: detalle.idSolicitud, fechaPropuesta: raw.fechaPropuesta, horaPropuesta: raw.horaPropuesta, resultado: raw.resultado.trim() || undefined }).subscribe({
+      next: () => {
+        this.guardandoVisita.set(false);
+        this.visitaForm.reset({ fechaPropuesta: '', horaPropuesta: '', resultado: '' });
+        this.mensajeExito.set('Visita previa solicitada correctamente.');
+        this.cargarVisitas(detalle.idSolicitud);
+        this.notificationsService.refrescarContador();
+      },
+      error: (err: unknown) => { this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(err, 'No se pudo registrar la visita previa.')); },
+    });
+  }
+
+  protected responderVisita(visita: VisitaPreviaItem, estado: 'ACEPTADA' | 'RECHAZADA' | 'CANCELADA' | 'REALIZADA' | 'NO_REALIZADA'): void {
+    if (this.guardandoVisita()) return;
+    this.guardandoVisita.set(true);
+    this.errorVisitas.set('');
+    this.visitsService.responder(visita.idVisita, { estado }).subscribe({
+      next: () => {
+        this.guardandoVisita.set(false);
+        const idSolicitud = this.detalleAbierto()?.idSolicitud;
+        if (idSolicitud) this.cargarVisitas(idSolicitud);
+        this.notificationsService.refrescarContador();
+      },
+      error: (err: unknown) => { this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(err, 'No se pudo actualizar la visita previa.')); },
+    });
+  }
+
+  protected responderCotizacion(
+    cotizacion: CotizacionItem,
+    decision: DecisionCotizacion,
+  ): void {
+    if (
+      this.cotizacionRespondiendo() ||
+      cotizacion.estado !== 'ENVIADA'
+    ) {
+      return;
+    }
+
+    this.cotizacionRespondiendo.set(cotizacion.idCotizacion);
+    this.errorCotizaciones.set('');
+
+    this.quotationsService
+      .responderCotizacion(cotizacion.idCotizacion, { decision })
+      .subscribe({
+        next: () => {
+          this.cotizacionRespondiendo.set(null);
+
+          const idSolicitud = this.detalleAbierto()?.idSolicitud;
+
+          if (idSolicitud) {
+            this.cargarCotizaciones(idSolicitud);
+          }
+
+          this.mensajeExito.set(
+            decision === 'ACEPTADA'
+              ? 'Cotización aceptada correctamente.'
+              : 'Cotización rechazada correctamente.',
+          );
+
+          this.cargarSolicitudes();
+          this.notificationsService.refrescarContador();
+        },
+        error: (err: unknown) => {
+          this.cotizacionRespondiendo.set(null);
+          this.errorCotizaciones.set(
+            mensajeDeError(
+              err,
+              'No se pudo registrar tu decisión.',
+            ),
+          );
+        },
+      });
+  }
+
+  // Cancelar solicitud
   protected abrirCancelar(solicitud: SolicitudServicioItem): void {
     this.solicitudACancelar.set(solicitud);
     this.errorCancelar.set('');
@@ -309,36 +536,46 @@ export class ClientRequestsComponent implements OnInit {
     if (this.cancelando()) {
       return;
     }
+
     this.solicitudACancelar.set(null);
   }
 
   protected confirmarCancelacion(): void {
     const objetivo = this.solicitudACancelar();
+
     if (!objetivo || this.cancelando()) {
       return;
     }
 
     this.cancelando.set(true);
     this.errorCancelar.set('');
+
     const motivo = this.formCancelar.getRawValue().motivo.trim();
 
-    this.requestsService.cancelarSolicitud(objetivo.idSolicitud, motivo || undefined).subscribe({
-      next: (res) => {
-        this.cancelando.set(false);
-        this.solicitudACancelar.set(null);
-        this.mensajeExito.set(
-          `${res.mensaje} (#${res.solicitud.referencia}). Se registró en el historial.`,
-        );
-        this.cargarSolicitudes();
-        this.notificationsService.refrescarContador();
-      },
-      error: (err: unknown) => {
-        this.cancelando.set(false);
-        this.errorCancelar.set(mensajeDeError(err, 'No se pudo cancelar la solicitud.'));
-      },
-    });
+    this.requestsService
+      .cancelarSolicitud(objetivo.idSolicitud, motivo || undefined)
+      .subscribe({
+        next: (res) => {
+          this.cancelando.set(false);
+          this.solicitudACancelar.set(null);
+
+          this.mensajeExito.set(
+            `${res.mensaje} (#${res.solicitud.referencia}). Se registró en el historial.`,
+          );
+
+          this.cargarSolicitudes();
+          this.notificationsService.refrescarContador();
+        },
+        error: (err: unknown) => {
+          this.cancelando.set(false);
+          this.errorCancelar.set(
+            mensajeDeError(err, 'No se pudo cancelar la solicitud.'),
+          );
+        },
+      });
   }
 
+  // WhatsApp
   protected abrirWhatsapp(solicitud: SolicitudServicioItem): void {
     this.cargandoWhatsapp.set(true);
     this.errorWhatsapp.set('');
@@ -356,7 +593,10 @@ export class ClientRequestsComponent implements OnInit {
         error: (err: unknown) => {
           this.cargandoWhatsapp.set(false);
           this.errorCarga.set(
-            mensajeDeError(err, 'No se pudo generar el enlace de contacto por WhatsApp.'),
+            mensajeDeError(
+              err,
+              'No se pudo generar el enlace de contacto por WhatsApp.',
+            ),
           );
         },
       });
@@ -366,6 +606,7 @@ export class ClientRequestsComponent implements OnInit {
     this.whatsappModal.set(null);
   }
 
+  // Etiquetas y estados
   protected etiquetaEstado(estado: string): string {
     const mapa: Record<string, string> = {
       ACTIVA: 'Activa',
@@ -377,6 +618,7 @@ export class ClientRequestsComponent implements OnInit {
       CANCELADA: 'Cancelada',
       VENCIDA: 'Vencida (30 días)',
     };
+
     return mapa[estado] ?? estado;
   }
 
@@ -385,15 +627,19 @@ export class ClientRequestsComponent implements OnInit {
       case 'ACTIVA':
       case 'EN_COTIZACION':
         return 'badge badge--activo';
+
       case 'PRIORIDAD_REDUCIDA':
         return 'badge badge--suspendido';
+
       case 'PROGRAMADA':
       case 'CONTRATADA':
       case 'COMPLETADA':
         return 'badge badge--cliente';
+
       case 'CANCELADA':
       case 'VENCIDA':
         return 'badge badge--inactivo';
+
       default:
         return 'badge badge--neutral';
     }
@@ -404,9 +650,11 @@ export class ClientRequestsComponent implements OnInit {
       SOLICITUD_PUBLICADA: 'Solicitud publicada',
       SOLICITUD_MODIFICADA: 'Solicitud modificada',
       SOLICITUD_CANCELADA: 'Solicitud cancelada',
-      PRIORIDAD_REDUCIDA_3_DIAS: 'Prioridad reducida (3 días sin respuesta)',
+      PRIORIDAD_REDUCIDA_3_DIAS:
+        'Prioridad reducida (3 días sin respuesta)',
       SOLICITUD_VENCIDA: 'Solicitud vencida (30 días)',
     };
+
     return mapa[tipo] ?? tipo;
   }
 }
