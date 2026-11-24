@@ -77,8 +77,9 @@ Objetos faltantes en el entorno local: ninguno.
 
 ## 7. Cambios necesarios
 
-- Documentales: corregida la numeración y la dependencia en la cabecera de 006; aclarado el endpoint real de agenda en `README-BLOCK4.md`.
+- Documentales: corregida la numeración y la dependencia en la cabecera de 006; aclarado el endpoint real de agenda en `README-BLOCK4.md`; registrados los 18 escenarios E2E y la validación visual en `PRUEBAS-BLOCK4.md`.
 - De aplicación: la existencia del índice único parcial `uq_cotizacion_aceptada_solicitud` y del UNIQUE por `id_solicitud` en `servicios_programados` exige validar en código antes de guardar. Se agregaron validaciones para devolver HTTP 400 en lugar de un error 500 de base de datos cuando se intenta aceptar una segunda cotización o programar dos veces la misma solicitud.
+- De integridad: la auditoría y las notificaciones de cotizaciones y visitas se escriben ahora dentro de la misma transacción que el cambio principal, usando repositorios del `EntityManager`. No se modificaron los servicios compartidos de auditoría y notificaciones.
 - No se requieren cambios estructurales en la migración ni ejecución de `DROP` sobre la base local.
 
 ## 8. Resultado de la validación
@@ -103,5 +104,6 @@ La migración 006 no incluye script `DOWN`. Una reversión estructural implicar�
 ## 11. Confirmación de aplicación
 
 - Entorno local: los objetos de 006 están presentes y fueron verificados por catálogo; 005 también está aplicada.
-- Esta revisión: no se aplicó 006 de forma real; únicamente se revisó el archivo y se validó previamente con transacción de prueba.
+- Esta revisión: no se aplicó 006 de forma real sobre la base local; únicamente se revisó el archivo y se validó previamente con transacción de prueba.
 - Entornos de entrega: queda pendiente aplicar el procedimiento del apartado 9 con copia de seguridad previa.
+- Estado del cambio: la corrección documental de la cabecera de 006 y las correcciones técnicas del Bloque 4 están publicadas en `feature/block-4-cotizaciones-programacion` dentro del Pull Request #2, pendiente de aprobación e integración autorizada a `main`.

@@ -12,10 +12,9 @@ import { Cotizacion } from '../entities/cotizacion.entity';
 import { SolicitudServicio } from '../entities/solicitud-servicio.entity';
 import { PerfilTrabajador } from '../entities/perfil-trabajador.entity';
 import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
+import { Notificacion } from '../entities/notificacion.entity';
+import { RegistroAuditoria } from '../entities/registro-auditoria.entity';
 import { Usuario } from '../entities/usuario.entity';
-
-import { AuditService } from '../audit/audit.service';
-import { NotificationsService } from '../notifications/notifications.service';
 
 import { CrearCotizacionDto } from './dto/crear-cotizacion.dto';
 import { ResponderCotizacionDto } from './dto/responder-cotizacion.dto';
@@ -33,8 +32,6 @@ export class QuotationsService {
     private readonly perfilRepository: Repository<PerfilTrabajador>,
 
     private readonly dataSource: DataSource,
-    private readonly auditService: AuditService,
-    private readonly notificationsService: NotificationsService,
   ) {}
 
   async crearCotizacion(
@@ -68,6 +65,15 @@ export class QuotationsService {
     ) {
       throw new BadRequestException(
         'La solicitud ya no admite nuevas cotizaciones.',
+      );
+    }
+
+    if (
+      solicitud.fechaVencimiento &&
+      new Date(solicitud.fechaVencimiento).getTime() < Date.now()
+    ) {
+      throw new BadRequestException(
+        'La solicitud ya venció y no admite nuevas cotizaciones.',
       );
     }
 
@@ -147,29 +153,35 @@ export class QuotationsService {
           await manager.save(SolicitudServicio, solicitud);
         }
 
+        await manager.getRepository(RegistroAuditoria).save(
+          manager.getRepository(RegistroAuditoria).create({
+            usuarioActor: { idUsuario: usuario.idUsuario },
+            accion: 'COTIZACION_ENVIADA',
+            entidadAfectada: 'COTIZACION',
+            idEntidadAfectada: nueva.idCotizacion,
+            detalle: {
+              idSolicitud: solicitud.idSolicitud,
+              precioTotal: total,
+            },
+          }),
+        );
+
+        await manager.getRepository(Notificacion).save(
+          manager.getRepository(Notificacion).create({
+            usuario: { idUsuario: solicitud.cliente.idUsuario },
+            tipo: 'COTIZACION',
+            titulo: 'Nueva cotización recibida',
+            mensaje: `Un trabajador ha enviado una cotización por Bs ${total.toFixed(2)}.`,
+            entidadRelacionada: 'COTIZACION',
+            idEntidadRelacionada: nueva.idCotizacion,
+            leida: false,
+            fechaLectura: null,
+          }),
+        );
+
         return nueva;
       },
     );
-
-    await this.auditService.registrarEvento(
-      usuario.idUsuario,
-      'COTIZACION_ENVIADA',
-      'COTIZACION',
-      guardada.idCotizacion,
-      {
-        idSolicitud: solicitud.idSolicitud,
-        precioTotal: total,
-      },
-    );
-
-    await this.notificationsService.crearNotificacion({
-      idUsuario: solicitud.cliente.idUsuario,
-      tipo: 'COTIZACION',
-      titulo: 'Nueva cotización recibida',
-      mensaje: `Un trabajador ha enviado una cotización por Bs ${total.toFixed(2)}.`,
-      entidadRelacionada: 'COTIZACION',
-      idEntidadRelacionada: guardada.idCotizacion,
-    });
 
     return guardada;
   }
@@ -381,28 +393,34 @@ export class QuotationsService {
           }
         }
 
+        await manager.getRepository(RegistroAuditoria).save(
+          manager.getRepository(RegistroAuditoria).create({
+            usuarioActor: { idUsuario: usuario.idUsuario },
+            accion: `COTIZACION_${dto.decision}`,
+            entidadAfectada: 'COTIZACION',
+            idEntidadAfectada: idCotizacion,
+            detalle: {
+              idSolicitud: cotizacion.solicitud.idSolicitud,
+            },
+          }),
+        );
+
+        await manager.getRepository(Notificacion).save(
+          manager.getRepository(Notificacion).create({
+            usuario: { idUsuario: cotizacion.perfil.usuario.idUsuario },
+            tipo: 'COTIZACION',
+            titulo: `Cotización ${dto.decision.toLowerCase()}`,
+            mensaje: `El cliente ha ${dto.decision.toLowerCase()} tu cotización.`,
+            entidadRelacionada: 'COTIZACION',
+            idEntidadRelacionada: idCotizacion,
+            leida: false,
+            fechaLectura: null,
+          }),
+        );
+
         return actualizada;
       },
     );
-
-    await this.auditService.registrarEvento(
-      usuario.idUsuario,
-      `COTIZACION_${dto.decision}`,
-      'COTIZACION',
-      idCotizacion,
-      {
-        idSolicitud: cotizacion.solicitud.idSolicitud,
-      },
-    );
-
-    await this.notificationsService.crearNotificacion({
-      idUsuario: cotizacion.perfil.usuario.idUsuario,
-      tipo: 'COTIZACION',
-      titulo: `Cotización ${dto.decision.toLowerCase()}`,
-      mensaje: `El cliente ha ${dto.decision.toLowerCase()} tu cotización.`,
-      entidadRelacionada: 'COTIZACION',
-      idEntidadRelacionada: idCotizacion,
-    });
 
     return resultado;
   }

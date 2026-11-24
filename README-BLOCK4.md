@@ -2,7 +2,7 @@
 
 ## 1. Alcance
 
-Este documento describe el estado real del Bloque 4 de ArreglaloYa-Pollos: cotizaciones, visitas previas, disponibilidad semanal y programación de servicios. El código está integrado en `main` mediante el Pull Request #1 y la rama de desarrollo es `feature/block-4-cotizaciones-programacion`.
+Este documento describe el estado real del Bloque 4 de ArreglaloYa-Pollos: cotizaciones, visitas previas, disponibilidad semanal y programación de servicios. La implementación original se integró en `main` mediante el Pull Request #1; las correcciones de esta revisión están en la rama `feature/block-4-cotizaciones-programacion` y pendientes en el Pull Request #2.
 
 ## 2. Funcionalidades implementadas
 
@@ -74,10 +74,11 @@ Antes de aplicar 006 en una base de datos con información real, se debe realiza
 
 ## 6. Estado de verificación
 
-- Backend y frontend compilados correctamente.
-- Verificaciones realizadas mediante API HTTP y consultas SQL sobre la base de datos local; el detalle está en `PRUEBAS-BLOCK4.md`.
+- Backend y frontend compilados correctamente tras las correcciones.
+- 18/18 escenarios derivados del README ejecutados sobre la API HTTP real, sin fallos; el detalle está en `PRUEBAS-BLOCK4.md`.
+- Validación visual parcial en navegador de visitas previas y agenda del trabajador, con 0 errores de consola; no se ejecutó automatización E2E completa desde navegador para los 18 escenarios.
+- Verificaciones adicionales mediante consultas SQL sobre la base de datos local; el detalle está en `PRUEBAS-BLOCK4.md`.
 - La auditoría de migraciones está en `AUDITORIA-BLOCK4.md`.
-- La certificación funcional E2E completa desde navegador queda pendiente de ejecutarse en una fase independiente.
 
 ## 7. Credenciales
 
@@ -85,6 +86,6 @@ Las cuentas temporales utilizadas durante las pruebas locales son solo de entorn
 
 ## 8. Integración
 
-Bloque integrado en la rama `main` mediante el Pull Request #1. No se realizaron merges adicionales como parte de esta revisión.
+La implementación original del Bloque 4 se integró en `main` mediante el Pull Request #1, ya fusionado y cerrado. Esta revisión no realizó merges adicionales.
 
-Nota: las correcciones y documentación de esta revisión están publicadas únicamente en `feature/block-4-cotizaciones-programacion`. El PR #1 ya fue mergeado y cerrado, por lo que para incorporar estos cambios a `main` se requiere autorización o un nuevo Pull Request.
+Las correcciones técnicas y la documentación actualizada están publicadas en `feature/block-4-cotizaciones-programacion` y forman parte del Pull Request #2 (`https://github.com/artreyes-ucb/ArreglaloYa-Pollos/pull/2`), que queda pendiente de revisión, aprobación e integración autorizada a `main`.
