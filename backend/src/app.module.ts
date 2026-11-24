@@ -1,5 +1,4 @@
-
-import { Module } from '@nestjs/common';
+﻿import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -9,22 +8,27 @@ import { AppService } from './app.service';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { RequestsModule } from './requests/requests.module';
+import { PaymentsModule } from './payments/payments.module';
 import { QuotationsModule } from './quotations/quotations.module';
+import { RequestsModule } from './requests/requests.module';
 import { SeedModule } from './seed/seed.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
 import { UsersModule } from './users/users.module';
 import { WorkersModule } from './workers/workers.module';
 
 import { CategoriaServicio } from './entities/categoria-servicio.entity';
+import { Comision } from './entities/comision.entity';
 import { Cotizacion } from './entities/cotizacion.entity';
 import { DisponibilidadTrabajador } from './entities/disponibilidad-trabajador.entity';
+import { Evaluacion } from './entities/evaluacion.entity';
 import { FotografiaSolicitud } from './entities/fotografia-solicitud.entity';
 import { HistorialSolicitud } from './entities/historial-solicitud.entity';
 import { IncrementoCotizacion } from './entities/incremento-cotizacion.entity';
 import { Notificacion } from './entities/notificacion.entity';
 import { Pago } from './entities/pago.entity';
 import { PerfilTrabajador } from './entities/perfil-trabajador.entity';
+import { Reclamo } from './entities/reclamo.entity';
+import { Reembolso } from './entities/reembolso.entity';
 import { RegistroAuditoria } from './entities/registro-auditoria.entity';
 import { ServicioProgramado } from './entities/servicio-programado.entity';
 import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
@@ -63,6 +67,10 @@ import { Zona } from './entities/zona.entity';
           Cotizacion,
           IncrementoCotizacion,
           VisitaPrevia,
+          Comision,
+          Reembolso,
+          Evaluacion,
+          Reclamo,
         ],
         autoLoadEntities: true,
         // El esquema se gobierna con Arreglalo_ya.sql.
@@ -79,6 +87,7 @@ import { Zona } from './entities/zona.entity';
     NotificationsModule,
     RequestsModule,
     QuotationsModule,
+    PaymentsModule,
     SuperadminModule,
     SeedModule,
   ],
@@ -86,4 +95,3 @@ import { Zona } from './entities/zona.entity';
   providers: [AppService],
 })
 export class AppModule {}
-
