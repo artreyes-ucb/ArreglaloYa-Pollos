@@ -408,7 +408,7 @@
               @if (v.estado === 'SOLICITADA' || v.estado === 'ACEPTADA') {
                 <div class="quotation-actions">
                   @if (v.estado === 'SOLICITADA') { <button type="button" class="btn btn-primary" [disabled]="guardandoVisita()" (click)="responderVisita(v,'ACEPTADA')">Aceptar</button> }
-                  <button type="button" class="btn btn-danger" [disabled]="guardandoVisita()" (click)="responderVisita(v,'RECHAZADA')">Rechazar</button>
+                  @if (v.estado === 'SOLICITADA') { <button type="button" class="btn btn-danger" [disabled]="guardandoVisita()" (click)="responderVisita(v,'RECHAZADA')">Rechazar</button> }
                   <button type="button" class="btn btn-secondary" [disabled]="guardandoVisita()" (click)="responderVisita(v,'CANCELADA')">Cancelar</button>
                 </div>
               }

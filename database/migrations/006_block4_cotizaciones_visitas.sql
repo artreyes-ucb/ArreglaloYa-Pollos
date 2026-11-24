@@ -1,9 +1,9 @@
 
 -- ============================================================================
--- MIGRACION 005 - BLOQUE 4
+-- MIGRACION 006 - BLOQUE 4
 -- COTIZACIONES, INCREMENTOS Y VISITAS PREVIAS
 -- Sistema: Arreglalo Ya
--- Requiere migraciones 001, 002, 003 y 004.
+-- Requiere migraciones 001, 002, 003, 004 y 005.
 -- PostgreSQL
 -- ============================================================================
 
@@ -264,5 +264,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_programacion_cotizacion
 
 
 -- ============================================================================
--- FIN MIGRACION 005
+-- FIN MIGRACION 006
 -- ============================================================================

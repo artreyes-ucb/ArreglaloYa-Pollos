@@ -1,5 +1,6 @@
 import { Cotizacion } from '../entities/cotizacion.entity';
 import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
+import { Notificacion } from '../entities/notificacion.entity';
 import { RegistroAuditoria } from '../entities/registro-auditoria.entity';
 import {
   BadRequestException,
@@ -419,6 +420,7 @@ async programarServicio(
       .getRepository(SolicitudServicio)
       .findOne({
         where: { idSolicitud: dto.idSolicitud },
+        relations: { cliente: true },
         lock: { mode: 'pessimistic_write' },
       });
 
@@ -551,6 +553,24 @@ if (
       );
     }
 
+    const programacionPorSolicitud = await manager
+      .getRepository(ServicioProgramado)
+      .findOne({
+        where: { solicitud: { idSolicitud: solicitud.idSolicitud } },
+      });
+
+    const programacionPorCotizacion = await manager
+      .getRepository(ServicioProgramado)
+      .findOne({
+        where: { cotizacion: { idCotizacion: cotizacionAceptada.idCotizacion } },
+      });
+
+    if (programacionPorSolicitud || programacionPorCotizacion) {
+      throw new BadRequestException(
+        'La solicitud ya tiene un servicio programado',
+      );
+    }
+
     const programacionRepository = manager.getRepository(ServicioProgramado);
 
     const programacion = programacionRepository.create({
@@ -565,8 +585,39 @@ if (
 
     const guardado = await programacionRepository.save(programacion);
 
+    const estadoAnteriorProgramacion = solicitud.estado;
     solicitud.estado = 'PROGRAMADA';
     await manager.getRepository(SolicitudServicio).save(solicitud);
+
+    await manager.save(
+      HistorialSolicitud,
+      manager.create(HistorialSolicitud, {
+        solicitud: { idSolicitud: solicitud.idSolicitud },
+        usuarioActor: { idUsuario },
+        tipoEvento: 'SOLICITUD_PROGRAMADA',
+        estadoAnterior: estadoAnteriorProgramacion,
+        estadoNuevo: 'PROGRAMADA',
+        detalle: {
+          idProgramacion: guardado.idProgramacion,
+          fechaServicio: dto.fechaServicio,
+          horaInicio: dto.horaInicio,
+          horaFin: dto.horaFin,
+        },
+      }),
+    );
+
+    await manager.getRepository(Notificacion).save(
+      manager.getRepository(Notificacion).create({
+        usuario: { idUsuario: solicitud.cliente.idUsuario },
+        tipo: 'PROGRAMACION',
+        titulo: 'Servicio programado',
+        mensaje: `Tu servicio fue programado para el ${dto.fechaServicio} de ${dto.horaInicio.slice(0, 5)} a ${dto.horaFin.slice(0, 5)}.`,
+        entidadRelacionada: 'SERVICIO_PROGRAMADO',
+        idEntidadRelacionada: guardado.idProgramacion,
+        leida: false,
+        fechaLectura: null,
+      }),
+    );
 
     await manager.getRepository(RegistroAuditoria).save(
       manager.getRepository(RegistroAuditoria).create({
@@ -607,7 +658,7 @@ async obtenerMiAgenda(idUsuario: string) {
     .getRepository(ServicioProgramado)
     .find({
       where: { perfil: { idPerfil: perfil.idPerfil } },
-      relations: { solicitud: true },
+      relations: { solicitud: { cliente: true } },
       order: {
         fechaServicio: 'ASC',
         horaInicio: 'ASC',

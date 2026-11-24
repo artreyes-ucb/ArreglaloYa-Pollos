@@ -117,25 +117,40 @@ export class WorkerAgendaComponent implements OnInit {
   private cargarDatos(): void {
     this.cargando.set(true);
     this.error.set('');
-    this.workers.obtenerDisponibilidad().subscribe({
-      next: (registros) => {
-        this.dias.update((dias) => dias.map((dia) => {
-          const guardado = registros.find((item) => item.diaSemana === dia.diaSemana);
-          return guardado ? { ...dia, horaInicio: guardado.horaInicio.slice(0, 5), horaFin: guardado.horaFin.slice(0, 5), disponible: guardado.disponible } : dia;
-        }));
-        this.cargarAgenda();
-      },
-      error: (error: unknown) => {
-        this.cargando.set(false);
-        this.error.set(mensajeDeError(error, 'No se pudo cargar tu disponibilidad.'));
-      },
-    });
+    this.workers.obtenerDisponibilidad()
+      .pipe(timeout(15000))
+      .subscribe({
+        next: (registros) => {
+          this.dias.update((dias) => dias.map((dia) => {
+            const guardado = registros.find((item) => item.diaSemana === dia.diaSemana);
+            return guardado ? { ...dia, horaInicio: guardado.horaInicio.slice(0, 5), horaFin: guardado.horaFin.slice(0, 5), disponible: guardado.disponible } : dia;
+          }));
+          this.cargarAgenda();
+        },
+        error: (error: unknown) => {
+          this.cargando.set(false);
+          if ((error as { name?: string })?.name === 'TimeoutError') {
+            this.error.set('El servidor no respondió a tiempo al cargar tu disponibilidad. Intenta nuevamente.');
+            return;
+          }
+          this.error.set(mensajeDeError(error, 'No se pudo cargar tu disponibilidad.'));
+        },
+      });
   }
 
   private cargarAgenda(): void {
-    this.workers.obtenerAgenda().subscribe({
-      next: (agenda) => { this.agenda.set(agenda); this.cargando.set(false); },
-      error: (error: unknown) => { this.cargando.set(false); this.error.set(mensajeDeError(error, 'No se pudo cargar tu agenda.')); },
-    });
+    this.workers.obtenerAgenda()
+      .pipe(timeout(15000))
+      .subscribe({
+        next: (agenda) => { this.agenda.set(agenda); this.cargando.set(false); },
+        error: (error: unknown) => {
+          this.cargando.set(false);
+          if ((error as { name?: string })?.name === 'TimeoutError') {
+            this.error.set('El servidor no respondió a tiempo al cargar tu agenda. Intenta nuevamente.');
+            return;
+          }
+          this.error.set(mensajeDeError(error, 'No se pudo cargar tu agenda.'));
+        },
+      });
   }
 }
