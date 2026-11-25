@@ -11,3 +11,4 @@ AGENTS.md
 docs/
 !backend/AGENTS.md
 backend/uploads/
+Add-Content -Path .gitignore -Value "`n.vscode/"

@@ -51,6 +51,10 @@ import { Zona } from './entities/zona.entity';
         username: configService.get<string>('DB_USERNAME', 'postgres'),
         password: configService.get<string>('DB_PASSWORD', 'postgres'),
         database: configService.get<string>('DB_NAME', 'arreglalo_ya_db'),
+        ssl:
+          configService.get<string>('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
         entities: [
           Usuario,
           RegistroAuditoria,
