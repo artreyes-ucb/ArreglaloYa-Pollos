@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://PENDIENTE-RENDER.onrender.com/api',
+  apiUrl: 'https://arreglaloya-pollos.onrender.com/api',
 };
