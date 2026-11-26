@@ -5,6 +5,8 @@ import { environment } from '../../../environments/environment';
 import {
   CatalogosSolicitudes,
   CreateSolicitudPayload,
+  HistoryPaginatedResponse,
+  HistoryQueryParams,
   SearchSolicitudesParams,
   SearchSolicitudesResponse,
   SolicitudServicioDetalle,
@@ -62,6 +64,41 @@ export class RequestsService {
 
   obtenerDetalle(idSolicitud: string): Observable<SolicitudServicioDetalle> {
     return this.http.get<SolicitudServicioDetalle>(`${this.baseUrl}/${idSolicitud}`);
+  }
+
+  obtenerHistorial(
+    idSolicitud: string,
+    params: HistoryQueryParams = {},
+  ): Observable<HistoryPaginatedResponse> {
+    let httpParams = new HttpParams();
+    if (params.tipoEvento) {
+      httpParams = httpParams.set('tipoEvento', params.tipoEvento);
+    }
+    if (params.estado) {
+      httpParams = httpParams.set('estado', params.estado);
+    }
+    if (params.actor) {
+      httpParams = httpParams.set('actor', params.actor);
+    }
+    if (params.fechaDesde) {
+      httpParams = httpParams.set('fechaDesde', params.fechaDesde);
+    }
+    if (params.fechaHasta) {
+      httpParams = httpParams.set('fechaHasta', params.fechaHasta);
+    }
+    if (params.page) {
+      httpParams = httpParams.set('page', String(params.page));
+    }
+    if (params.limit) {
+      httpParams = httpParams.set('limit', String(params.limit));
+    }
+    if (params.order) {
+      httpParams = httpParams.set('order', params.order);
+    }
+
+    return this.http.get<HistoryPaginatedResponse>(`${this.baseUrl}/${idSolicitud}/history`, {
+      params: httpParams,
+    });
   }
 
   modificarSolicitud(

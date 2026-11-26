@@ -34,14 +34,69 @@ export interface UploadFotoResponse {
   tipo: string;
 }
 
+export interface HistorialActorItem {
+  idUsuario: string | null;
+  nombre: string;
+  rol: string | null;
+  automatico: boolean;
+}
+
 export interface HistorialSolicitudItem {
   idEvento: string;
   tipoEvento: string;
+  tituloEvento: string;
+  descripcion: string;
   estadoAnterior: string | null;
   estadoNuevo: string | null;
   detalle: Record<string, unknown> | null;
-  actorNombre: string | null;
+  actor: HistorialActorItem;
   fechaEvento: string;
+}
+
+/** Filtros para el historial avanzado */
+export interface HistoryQueryParams {
+  tipoEvento?: string;
+  estado?: string;
+  actor?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  page?: number;
+  limit?: number;
+  order?: 'ASC' | 'DESC';
+}
+
+/** Meta información de la paginación */
+export interface HistoryPaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  order: 'ASC' | 'DESC';
+}
+
+/** Opciones disponibles para filtros */
+export interface HistoryFilterOption {
+  idUsuario: string;
+  nombre: string;
+  rol: string | null;
+}
+
+export interface HistoryFiltrosDisponibles {
+  tiposEvento: { valor: string; etiqueta: string }[];
+  actores: HistoryFilterOption[];
+}
+
+/** Respuesta completa del historial paginado */
+export interface HistoryPaginatedResponse {
+  data: HistorialSolicitudItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    order: 'ASC' | 'DESC';
+    filtrosDisponibles: HistoryFiltrosDisponibles;
+  };
 }
 
 export interface ProgramacionResumenItem {
