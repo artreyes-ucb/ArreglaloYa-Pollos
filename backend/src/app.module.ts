@@ -28,6 +28,7 @@ import { IncrementoCotizacion } from './entities/incremento-cotizacion.entity';
 import { Notificacion } from './entities/notificacion.entity';
 import { Pago } from './entities/pago.entity';
 import { PerfilTrabajador } from './entities/perfil-trabajador.entity';
+import { PreferenciaNotificacion } from './entities/preferencia-notificacion.entity';
 import { Reclamo } from './entities/reclamo.entity';
 import { Reembolso } from './entities/reembolso.entity';
 import { RegistroAuditoria } from './entities/registro-auditoria.entity';
@@ -68,6 +69,7 @@ import { Zona } from './entities/zona.entity';
           FotografiaSolicitud,
           HistorialSolicitud,
           Notificacion,
+          PreferenciaNotificacion,
           Pago,
           Cotizacion,
           IncrementoCotizacion,
