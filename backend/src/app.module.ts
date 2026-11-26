@@ -35,6 +35,7 @@ import { ServicioProgramado } from './entities/servicio-programado.entity';
 import { ServicioTrabajador } from './entities/servicio-trabajador.entity';
 import { SolicitudServicio } from './entities/solicitud-servicio.entity';
 import { Usuario } from './entities/usuario.entity';
+import { ReprogramacionVisita } from './entities/reprogramacion-visita.entity';
 import { VisitaPrevia } from './entities/visita-previa.entity';
 import { Zona } from './entities/zona.entity';
 
@@ -72,6 +73,7 @@ import { Zona } from './entities/zona.entity';
           Cotizacion,
           IncrementoCotizacion,
           VisitaPrevia,
+          ReprogramacionVisita,
           Comision,
           Reembolso,
           Evaluacion,
@@ -101,3 +103,4 @@ import { Zona } from './entities/zona.entity';
   providers: [AppService],
 })
 export class AppModule {}
+

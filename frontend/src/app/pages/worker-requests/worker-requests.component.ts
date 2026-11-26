@@ -15,7 +15,7 @@ import {
 } from '../../core/models/requests.models';
 
 import { CrearCotizacionPayload } from '../../core/models/quotations.models';
-import { VisitaPreviaItem } from '../../core/models/visits.models';
+import { ReprogramacionVisitaItem, VisitaPreviaItem } from '../../core/models/visits.models';
 import { QuotationsService } from '../../core/services/quotations.service';
 import { RequestsService } from '../../core/services/requests.service';
 import { VisitsService } from '../../core/services/visits.service';
@@ -56,7 +56,11 @@ export class WorkerRequestsComponent implements OnInit {
   protected readonly cargandoVisitas = signal(false);
   protected readonly errorVisitas = signal('');
   protected readonly guardandoVisita = signal(false);
+  protected readonly guardandoReprogramacion = signal(false);
+  protected readonly reprogramandoVisitaId = signal<string | null>(null);
+  protected readonly respuestaReprogramacionId = signal<string | null>(null);
   protected readonly visitaForm = this.fb.nonNullable.group({ fechaPropuesta: ['', [Validators.required]], horaPropuesta: ['', [Validators.required]], resultado: [''] });
+  protected readonly reprogramForm = this.fb.nonNullable.group({ fechaPropuesta: ['', [Validators.required]], horaInicioPropuesta: ['', [Validators.required]], horaFinPropuesta: ['', [Validators.required]], motivo: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(500)]] });
 
   protected readonly filtrosForm = this.fb.nonNullable.group({
     idCategoria: [0],
@@ -237,6 +241,52 @@ export class WorkerRequestsComponent implements OnInit {
       next:()=>{this.guardandoVisita.set(false); const id=this.detalleSolicitud()?.idSolicitud; if(id) this.cargarVisitas(id);},
       error:(e:unknown)=>{this.guardandoVisita.set(false); this.errorVisitas.set(mensajeDeError(e,'No se pudo actualizar la visita previa.'));},
     });
+  }
+
+  protected iniciarReprogramacion(visita: VisitaPreviaItem): void {
+    if (this.guardandoReprogramacion()) return;
+    this.errorVisitas.set('');
+    this.reprogramandoVisitaId.set(visita.idVisita);
+    const fecha = visita.fechaConfirmada ?? visita.fechaPropuesta;
+    const inicio = (visita.horaConfirmada ?? visita.horaPropuesta).slice(0, 5);
+    const fin = (visita.horaFinConfirmada ?? visita.horaFinPropuesta ?? '').slice(0, 5);
+    this.reprogramForm.reset({ fechaPropuesta: fecha, horaInicioPropuesta: inicio, horaFinPropuesta: fin, motivo: '' });
+  }
+  protected cancelarReprogramacionForm(): void {
+    if (this.guardandoReprogramacion()) return;
+    this.reprogramandoVisitaId.set(null);
+    this.reprogramForm.reset({ fechaPropuesta: '', horaInicioPropuesta: '', horaFinPropuesta: '', motivo: '' });
+  }
+  protected enviarReprogramacion(visita: VisitaPreviaItem): void {
+    if (this.reprogramForm.invalid || this.guardandoReprogramacion()) { this.reprogramForm.markAllAsTouched(); return; }
+    const raw = this.reprogramForm.getRawValue();
+    this.guardandoReprogramacion.set(true); this.errorVisitas.set('');
+    this.visitsService.solicitarReprogramacion(visita.idVisita, { fechaPropuesta: raw.fechaPropuesta, horaInicioPropuesta: raw.horaInicioPropuesta, horaFinPropuesta: raw.horaFinPropuesta, motivo: raw.motivo.trim() }).subscribe({
+      next: () => { this.guardandoReprogramacion.set(false); this.reprogramandoVisitaId.set(null); this.reprogramForm.reset({ fechaPropuesta: '', horaInicioPropuesta: '', horaFinPropuesta: '', motivo: '' }); const id=this.detalleSolicitud()?.idSolicitud; if(id) this.cargarVisitas(id); },
+      error: (e: unknown) => { this.guardandoReprogramacion.set(false); this.errorVisitas.set(mensajeDeError(e, 'No se pudo solicitar la reprogramación.')); },
+    });
+  }
+  protected responderReprogramacion(visita: VisitaPreviaItem, rep: ReprogramacionVisitaItem, decision: 'ACEPTADA' | 'RECHAZADA'): void {
+    if (this.respuestaReprogramacionId()) return;
+    this.respuestaReprogramacionId.set(rep.idReprogramacion); this.errorVisitas.set('');
+    this.visitsService.responderReprogramacion(visita.idVisita, rep.idReprogramacion, { decision }).subscribe({
+      next: () => { this.respuestaReprogramacionId.set(null); const id=this.detalleSolicitud()?.idSolicitud; if(id) this.cargarVisitas(id); },
+      error: (e: unknown) => { this.respuestaReprogramacionId.set(null); this.errorVisitas.set(mensajeDeError(e, 'No se pudo responder la reprogramación.')); },
+    });
+  }
+  protected cancelarReprogramacion(visita: VisitaPreviaItem, rep: ReprogramacionVisitaItem): void {
+    if (this.respuestaReprogramacionId()) return;
+    this.respuestaReprogramacionId.set(rep.idReprogramacion); this.errorVisitas.set('');
+    this.visitsService.cancelarReprogramacion(visita.idVisita, rep.idReprogramacion).subscribe({
+      next: () => { this.respuestaReprogramacionId.set(null); const id=this.detalleSolicitud()?.idSolicitud; if(id) this.cargarVisitas(id); },
+      error: (e: unknown) => { this.respuestaReprogramacionId.set(null); this.errorVisitas.set(mensajeDeError(e, 'No se pudo cancelar la reprogramación.')); },
+    });
+  }
+  protected reprogramacionPendiente(visita: VisitaPreviaItem): ReprogramacionVisitaItem | null {
+    return (visita.reprogramaciones ?? []).find((r) => r.estado === 'PENDIENTE') ?? null;
+  }
+  protected puedeSolicitarReprogramacion(visita: VisitaPreviaItem): boolean {
+    return ['SOLICITADA', 'ACEPTADA'].includes(visita.estado) && !this.reprogramacionPendiente(visita);
   }
 
   protected abrirWhatsapp(solicitud: SolicitudServicioItem): void {
