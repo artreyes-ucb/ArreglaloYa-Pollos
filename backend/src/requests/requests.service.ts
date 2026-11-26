@@ -10,7 +10,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { AuditService } from '../audit/audit.service';
+import {
+  describirEventoHistorial,
+  etiquetaEventoHistorial,
+  TIPO_EVENTO_HISTORIAL,
+} from '../common/constants/historial-eventos';
 import { Rol } from '../common/enums/rol.enum';
+import { construirEventoHistorial } from '../common/utils/historial-solicitud.util';
 import { CategoriaServicio } from '../entities/categoria-servicio.entity';
 import { FotografiaSolicitud } from '../entities/fotografia-solicitud.entity';
 import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
@@ -23,6 +29,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CancelSolicitudDto } from './dto/cancel-solicitud.dto';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
 import { FotografiaSolicitudDto } from './dto/fotografia-solicitud.dto';
+import { HistoryQueryDto } from './dto/history-query.dto';
 import { SearchSolicitudesDto } from './dto/search-solicitudes.dto';
 import { UpdateSolicitudDto } from './dto/update-solicitud.dto';
 import {
@@ -42,14 +49,48 @@ export interface FotografiaRespuesta {
   fechaSubida: Date;
 }
 
+export interface HistorialActorRespuesta {
+  idUsuario: string | null;
+  nombre: string;
+  rol: string | null;
+  automatico: boolean;
+}
+
 export interface HistorialSolicitudRespuesta {
   idEvento: string;
   tipoEvento: string;
+  tituloEvento: string;
+  descripcion: string;
   estadoAnterior: string | null;
   estadoNuevo: string | null;
   detalle: Record<string, unknown> | null;
+  actor: HistorialActorRespuesta;
+  /** Compatibilidad con la vista anterior del detalle. */
   actorNombre: string | null;
   fechaEvento: Date;
+}
+
+export interface HistorialActorOpcionRespuesta {
+  idUsuario: string;
+  nombre: string;
+  rol: string | null;
+}
+
+export interface HistorialFiltrosDisponiblesRespuesta {
+  tiposEvento: { valor: string; etiqueta: string }[];
+  actores: HistorialActorOpcionRespuesta[];
+}
+
+export interface HistorialPaginadoRespuesta {
+  data: HistorialSolicitudRespuesta[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    order: 'ASC' | 'DESC';
+    filtrosDisponibles: HistorialFiltrosDisponiblesRespuesta;
+  };
 }
 
 export interface SolicitudResumenRespuesta {
@@ -227,21 +268,23 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
           await fotoRepo.save(fotos);
         }
 
-        const evento = historialRepo.create({
-          solicitud: { idSolicitud: guardada.idSolicitud },
-          usuarioActor: { idUsuario: usuario.idUsuario },
-          tipoEvento: 'SOLICITUD_PUBLICADA',
-          estadoAnterior: null,
-          estadoNuevo: ESTADO_SOLICITUD.ACTIVA,
-          detalle: {
-            idCategoria: categoria.idCategoria,
-            categoria: categoria.nombre,
-            idZona: zona.idZona,
-            zona: zona.nombre,
-            cantidadFotografias: dto.fotografias?.length ?? 0,
-            fechaVencimiento: fechaVencimiento.toISOString(),
-          },
-        });
+        const evento = historialRepo.create(
+          construirEventoHistorial({
+            idSolicitud: guardada.idSolicitud,
+            actor: usuario,
+            tipoEvento: TIPO_EVENTO_HISTORIAL.SOLICITUD_PUBLICADA,
+            estadoAnterior: null,
+            estadoNuevo: ESTADO_SOLICITUD.ACTIVA,
+            detalle: {
+              idCategoria: categoria.idCategoria,
+              categoria: categoria.nombre,
+              idZona: zona.idZona,
+              zona: zona.nombre,
+              cantidadFotografias: dto.fotografias?.length ?? 0,
+              fechaVencimiento: fechaVencimiento.toISOString(),
+            },
+          }),
+        );
         await historialRepo.save(evento);
 
         return guardada.idSolicitud;
@@ -298,11 +341,11 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
       .leftJoinAndSelect('s.zona', 'zona')
       .leftJoinAndSelect('s.cliente', 'cliente')
       .leftJoinAndSelect('s.fotografias', 'fotografias')
-      .where('cliente.id_usuario = :idCliente', {
+      .where('cliente.idUsuario = :idCliente', {
         idCliente: usuario.idUsuario,
       })
-      .orderBy('s.fecha_publicacion', 'DESC')
-      .addOrderBy('fotografias.fecha_subida', 'ASC');
+      .orderBy('s.fechaPublicacion', 'DESC')
+      .addOrderBy('fotografias.fechaSubida', 'ASC');
 
     if (estado && estado.trim()) {
       qb.andWhere('s.estado = :estado', {
@@ -369,31 +412,31 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
       .where('s.estado IN (:...estados)', {
         estados: ESTADOS_DISPONIBLES_BUSQUEDA,
       })
-      .andWhere('cliente.id_usuario != :idUsuario', {
+      .andWhere('cliente.idUsuario != :idUsuario', {
         idUsuario: usuario.idUsuario,
       });
 
     if (filtros.idCategoria) {
-      qb.andWhere('categoria.id_categoria = :idCategoria', {
+      qb.andWhere('categoria.idCategoria = :idCategoria', {
         idCategoria: filtros.idCategoria,
       });
     }
 
     if (filtros.idZona) {
-      qb.andWhere('zona.id_zona = :idZona', {
+      qb.andWhere('zona.idZona = :idZona', {
         idZona: filtros.idZona,
       });
     }
 
     if (filtros.q && filtros.q.trim()) {
       qb.andWhere(
-        '(LOWER(s.descripcion) LIKE :termino OR LOWER(s.ubicacion_general) LIKE :termino)',
+        '(LOWER(s.descripcion) LIKE :termino OR LOWER(s.ubicacionGeneral) LIKE :termino)',
         { termino: `%${filtros.q.trim().toLowerCase()}%` },
       );
     }
 
-    qb.orderBy('s.fecha_publicacion', 'DESC').addOrderBy(
-      'fotografias.fecha_subida',
+    qb.orderBy('s.fechaPublicacion', 'DESC').addOrderBy(
+      'fotografias.fechaSubida',
       'ASC',
     );
 
@@ -524,17 +567,105 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
 
     return {
       ...resumen,
-      historial: historial.map((h) => ({
-        idEvento: h.idEvento,
-        tipoEvento: h.tipoEvento,
-        estadoAnterior: h.estadoAnterior,
-        estadoNuevo: h.estadoNuevo,
-        detalle: h.detalle,
-        actorNombre: h.usuarioActor
-          ? `${h.usuarioActor.nombres} ${h.usuarioActor.apellidos}`
-          : 'Sistema',
-        fechaEvento: h.fechaEvento,
-      })),
+      historial: historial.map((h) => this.serializarEventoHistorial(h)),
+    };
+  }
+
+  /**
+   * Historial avanzado paginado y filtrado.
+   *
+   * Los filtros se aplican en PostgreSQL mediante QueryBuilder; nunca se
+   * descarga el historial completo para filtrarlo en memoria. La autorización
+   * reutiliza las mismas reglas del detalle: propietario, administrador o
+   * trabajador asignado / habilitado para la solicitud.
+   */
+  async obtenerHistorial(
+    usuario: Usuario,
+    idSolicitud: string,
+    filtros: HistoryQueryDto,
+  ): Promise<HistorialPaginadoRespuesta> {
+    await this.evaluarVigenciaSiCorresponde();
+
+    const solicitud = await this.solicitudRepository.findOne({
+      where: { idSolicitud },
+      relations: { cliente: true },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException('Solicitud de servicio no encontrada');
+    }
+
+    await this.validarAccesoHistorial(usuario, solicitud);
+    await this.validarRangoFechasHistorial(filtros);
+
+    if (filtros.actor) {
+      const actorExiste = await this.dataSource
+        .getRepository(Usuario)
+        .exists({ where: { idUsuario: filtros.actor } });
+
+      if (!actorExiste) {
+        throw new BadRequestException(
+          'El usuario responsable indicado no existe',
+        );
+      }
+    }
+
+    const qb = this.historialRepository
+      .createQueryBuilder('h')
+      .leftJoinAndSelect('h.usuarioActor', 'actor')
+      .where('h.solicitud.idSolicitud = :idSolicitud', { idSolicitud });
+
+    if (filtros.tipoEvento) {
+      qb.andWhere('h.tipoEvento = :tipoEvento', {
+        tipoEvento: filtros.tipoEvento,
+      });
+    }
+
+    if (filtros.estado) {
+      qb.andWhere(
+        '(h.estadoAnterior = :estado OR h.estadoNuevo = :estado)',
+        { estado: filtros.estado },
+      );
+    }
+
+    if (filtros.actor) {
+      qb.andWhere('h.usuarioActor.idUsuario = :actor', { actor: filtros.actor });
+    }
+
+    if (filtros.fechaDesde) {
+      qb.andWhere('h.fechaEvento >= :fechaDesde', {
+        fechaDesde: this.inicioDelDia(filtros.fechaDesde),
+      });
+    }
+
+    if (filtros.fechaHasta) {
+      qb.andWhere('h.fechaEvento <= :fechaHasta', {
+        fechaHasta: this.finDelDia(filtros.fechaHasta),
+      });
+    }
+
+    const order = filtros.order ?? 'DESC';
+    qb.orderBy('h.fechaEvento', order).addOrderBy('h.idEvento', order);
+
+    const page = filtros.page ?? 1;
+    const limit = filtros.limit ?? 10;
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [eventos, total] = await qb.getManyAndCount();
+    const filtrosDisponibles =
+      await this.obtenerFiltrosDisponiblesHistorial(idSolicitud);
+
+    return {
+      data: eventos.map((evento) => this.serializarEventoHistorial(evento)),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+        order,
+        filtrosDisponibles,
+      },
     };
   }
 
@@ -684,14 +815,16 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      const evento = historialRepo.create({
-        solicitud: { idSolicitud },
-        usuarioActor: { idUsuario: usuario.idUsuario },
-        tipoEvento: 'SOLICITUD_MODIFICADA',
-        estadoAnterior,
-        estadoNuevo: solicitud.estado,
-        detalle: { camposModificados },
-      });
+      const evento = historialRepo.create(
+        construirEventoHistorial({
+          idSolicitud,
+          actor: usuario,
+          tipoEvento: TIPO_EVENTO_HISTORIAL.SOLICITUD_MODIFICADA,
+          estadoAnterior,
+          estadoNuevo: solicitud.estado,
+          detalle: { camposModificados },
+        }),
+      );
       await historialRepo.save(evento);
     });
 
@@ -764,14 +897,16 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
       solicitud.estado = ESTADO_SOLICITUD.CANCELADA;
       await solicitudRepo.save(solicitud);
 
-      const evento = historialRepo.create({
-        solicitud: { idSolicitud },
-        usuarioActor: { idUsuario: usuario.idUsuario },
-        tipoEvento: 'SOLICITUD_CANCELADA',
-        estadoAnterior,
-        estadoNuevo: ESTADO_SOLICITUD.CANCELADA,
-        detalle: { motivo },
-      });
+      const evento = historialRepo.create(
+        construirEventoHistorial({
+          idSolicitud,
+          actor: usuario,
+          tipoEvento: TIPO_EVENTO_HISTORIAL.SOLICITUD_CANCELADA,
+          estadoAnterior,
+          estadoNuevo: ESTADO_SOLICITUD.CANCELADA,
+          detalle: { motivo },
+        }),
+      );
       await historialRepo.save(evento);
     });
 
@@ -863,21 +998,27 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
         const estadoAnterior = solicitud.estado;
         solicitud.estado = ESTADO_SOLICITUD.VENCIDA;
         solicitud.fechaVencimiento = fechaVenc;
-        await this.solicitudRepository.save(solicitud);
 
-        await this.historialRepository.save(
-          this.historialRepository.create({
-            solicitud: { idSolicitud: solicitud.idSolicitud },
-            usuarioActor: null,
-            tipoEvento: 'SOLICITUD_VENCIDA',
-            estadoAnterior,
-            estadoNuevo: ESTADO_SOLICITUD.VENCIDA,
-            detalle: {
-              regla: 'RN-05',
-              motivo: `Caducidad máxima alcanzada (${DIAS_CADUCIDAD_MAXIMA} días)`,
-            },
-          }),
-        );
+        // El cambio de estado y su evento se confirman en la misma transacción.
+        await this.dataSource.transaction(async (manager) => {
+          await manager.getRepository(SolicitudServicio).save(solicitud);
+          await manager.getRepository(HistorialSolicitud).save(
+            manager.getRepository(HistorialSolicitud).create(
+              construirEventoHistorial({
+                idSolicitud: solicitud.idSolicitud,
+                actor: null,
+                automatico: true,
+                tipoEvento: TIPO_EVENTO_HISTORIAL.SOLICITUD_VENCIDA,
+                estadoAnterior,
+                estadoNuevo: ESTADO_SOLICITUD.VENCIDA,
+                detalle: {
+                  regla: 'RN-05',
+                  motivo: `Caducidad máxima alcanzada (${DIAS_CADUCIDAD_MAXIMA} días)`,
+                },
+              }),
+            ),
+          );
+        });
 
         await this.auditService.registrarEvento(
           null,
@@ -906,21 +1047,26 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
         msTranscurridos >= limite3DiasMs
       ) {
         solicitud.estado = ESTADO_SOLICITUD.PRIORIDAD_REDUCIDA;
-        await this.solicitudRepository.save(solicitud);
 
-        await this.historialRepository.save(
-          this.historialRepository.create({
-            solicitud: { idSolicitud: solicitud.idSolicitud },
-            usuarioActor: null,
-            tipoEvento: 'PRIORIDAD_REDUCIDA_3_DIAS',
-            estadoAnterior: ESTADO_SOLICITUD.ACTIVA,
-            estadoNuevo: ESTADO_SOLICITUD.PRIORIDAD_REDUCIDA,
-            detalle: {
-              regla: 'RN-05',
-              motivo: `Sin respuesta tras ${DIAS_PERDIDA_PRIORIDAD} días desde la publicación`,
-            },
-          }),
-        );
+        await this.dataSource.transaction(async (manager) => {
+          await manager.getRepository(SolicitudServicio).save(solicitud);
+          await manager.getRepository(HistorialSolicitud).save(
+            manager.getRepository(HistorialSolicitud).create(
+              construirEventoHistorial({
+                idSolicitud: solicitud.idSolicitud,
+                actor: null,
+                automatico: true,
+                tipoEvento: TIPO_EVENTO_HISTORIAL.PRIORIDAD_REDUCIDA_3_DIAS,
+                estadoAnterior: ESTADO_SOLICITUD.ACTIVA,
+                estadoNuevo: ESTADO_SOLICITUD.PRIORIDAD_REDUCIDA,
+                detalle: {
+                  regla: 'RN-05',
+                  motivo: `Sin respuesta tras ${DIAS_PERDIDA_PRIORIDAD} días desde la publicación`,
+                },
+              }),
+            ),
+          );
+        });
 
         await this.auditService.registrarEvento(
           null,
@@ -1088,6 +1234,159 @@ export class RequestsService implements OnModuleInit, OnModuleDestroy {
     throw new ForbiddenException(
       'Solo clientes y trabajadores autorizados pueden generar enlaces de WhatsApp',
     );
+  }
+
+  private serializarEventoHistorial(
+    evento: HistorialSolicitud,
+  ): HistorialSolicitudRespuesta {
+    const nombreActor =
+      evento.actorNombre ??
+      (evento.usuarioActor
+        ? `${evento.usuarioActor.nombres} ${evento.usuarioActor.apellidos}`.trim()
+        : null);
+
+    return {
+      idEvento: evento.idEvento,
+      tipoEvento: evento.tipoEvento,
+      tituloEvento: etiquetaEventoHistorial(evento.tipoEvento),
+      descripcion: describirEventoHistorial(
+        evento.tipoEvento,
+        evento.detalle,
+      ),
+      estadoAnterior: evento.estadoAnterior,
+      estadoNuevo: evento.estadoNuevo,
+      detalle: evento.detalle,
+      actor: {
+        idUsuario: evento.usuarioActor?.idUsuario ?? null,
+        nombre: nombreActor ?? 'Sistema',
+        rol: evento.rolActor ?? evento.usuarioActor?.rolActivo ?? null,
+        automatico: evento.automatico || !evento.usuarioActor,
+      },
+      actorNombre: nombreActor ?? 'Sistema',
+      fechaEvento: evento.fechaEvento,
+    };
+  }
+
+  private async validarAccesoHistorial(
+    usuario: Usuario,
+    solicitud: SolicitudServicio,
+  ): Promise<void> {
+    const esPropietario =
+      solicitud.cliente?.idUsuario === usuario.idUsuario;
+    const esAdmin =
+      usuario.rolActivo === Rol.ADMIN || usuario.rolActivo === Rol.SUPERADMIN;
+
+    if (esPropietario || esAdmin) {
+      return;
+    }
+
+    if (usuario.rolActivo === Rol.CLIENTE) {
+      throw new ForbiddenException(
+        'No tienes permiso para consultar el historial de una solicitud que no te pertenece',
+      );
+    }
+
+    if (usuario.rolActivo === Rol.TRABAJADOR) {
+      const programacion = await this.programacionRepository.findOne({
+        where: { solicitud: { idSolicitud: solicitud.idSolicitud } },
+        relations: { perfil: { usuario: true } },
+      });
+
+      const esTrabajadorAsignado =
+        programacion?.perfil?.usuario?.idUsuario === usuario.idUsuario;
+
+      if (
+        esTrabajadorAsignado ||
+        ESTADOS_DISPONIBLES_BUSQUEDA.includes(solicitud.estado)
+      ) {
+        return;
+      }
+
+      throw new ForbiddenException(
+        'No tienes permiso para consultar el historial de esta solicitud',
+      );
+    }
+
+    throw new ForbiddenException(
+      'No tienes permiso para consultar el historial de esta solicitud',
+    );
+  }
+
+  private validarRangoFechasHistorial(filtros: HistoryQueryDto): void {
+    if (!filtros.fechaDesde || !filtros.fechaHasta) {
+      return;
+    }
+
+    const desde = this.inicioDelDia(filtros.fechaDesde);
+    const hasta = this.finDelDia(filtros.fechaHasta);
+
+    if (desde.getTime() > hasta.getTime()) {
+      throw new BadRequestException(
+        'La fecha desde no puede ser posterior a la fecha hasta',
+      );
+    }
+  }
+
+  /**
+   * Acepta fechas `YYYY-MM-DD` o ISO 8601. Las fechas sin hora se interpretan
+   * en la zona horaria del servidor para que el rango cubra el día completo.
+   */
+  private inicioDelDia(valor: string): Date {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+      return new Date(`${valor}T00:00:00`);
+    }
+    return new Date(valor);
+  }
+
+  private finDelDia(valor: string): Date {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+      return new Date(`${valor}T23:59:59.999`);
+    }
+    return new Date(valor);
+  }
+
+  private async obtenerFiltrosDisponiblesHistorial(
+    idSolicitud: string,
+  ): Promise<HistorialFiltrosDisponiblesRespuesta> {
+    const tiposRaw = await this.historialRepository
+      .createQueryBuilder('h')
+      .select('DISTINCT h.tipoEvento', 'tipo')
+      .where('h.solicitud.idSolicitud = :idSolicitud', { idSolicitud })
+      .orderBy('h.tipoEvento', 'ASC')
+      .getRawMany<{ tipo: string }>();
+
+    const actoresRaw = await this.historialRepository
+      .createQueryBuilder('h')
+      .innerJoin('h.usuarioActor', 'actor')
+      .select('actor.idUsuario', 'idUsuario')
+      .addSelect('h.actorNombre', 'nombre')
+      .addSelect('h.rolActor', 'rol')
+      .where('h.solicitud.idSolicitud = :idSolicitud', { idSolicitud })
+      .orderBy('h.actorNombre', 'ASC')
+      .getRawMany<{
+        idUsuario: string;
+        nombre: string | null;
+        rol: string | null;
+      }>();
+
+    const actoresUnicos = new Map<string, HistorialActorOpcionRespuesta>();
+    for (const actor of actoresRaw) {
+      if (!actoresUnicos.has(actor.idUsuario)) {
+        actoresUnicos.set(actor.idUsuario, {
+          idUsuario: actor.idUsuario,
+          nombre: actor.nombre ?? 'Usuario',
+          rol: actor.rol,
+        });
+      }
+    }
+
+    return {
+      tiposEvento: tiposRaw.map((item) => ({
+        valor: item.tipo,
+        etiqueta: etiquetaEventoHistorial(item.tipo),
+      })),
+      actores: Array.from(actoresUnicos.values()),
+    };
   }
 
   private async evaluarVigenciaSiCorresponde(): Promise<void> {

@@ -35,6 +35,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Usuario } from '../entities/usuario.entity';
 import { CancelSolicitudDto } from './dto/cancel-solicitud.dto';
 import { CreateSolicitudDto } from './dto/create-solicitud.dto';
+import { HistoryQueryDto } from './dto/history-query.dto';
 import { SearchSolicitudesDto } from './dto/search-solicitudes.dto';
 import { UpdateSolicitudDto } from './dto/update-solicitud.dto';
 import { WhatsappLinkQueryDto } from './dto/whatsapp-link-query.dto';
@@ -199,6 +200,64 @@ export class RequestsController {
   })
   evaluarVigencia() {
     return this.requestsService.evaluarVigenciaSolicitudes(true);
+  }
+
+  @Get(':id/history')
+  @Roles(Rol.CLIENTE, Rol.TRABAJADOR, Rol.ADMIN, Rol.SUPERADMIN)
+  @ApiOperation({
+    summary: 'Consultar el historial avanzado de una solicitud',
+    description:
+      'Devuelve los eventos del ciclo de vida de la solicitud con filtros combinables, orden cronológico y paginación real en PostgreSQL. Incluye el actor responsable y los eventos automáticos del sistema.',
+  })
+  @ApiParam({ name: 'id', description: 'UUID de la solicitud' })
+  @ApiQuery({
+    name: 'tipoEvento',
+    required: false,
+    description: 'Tipo de evento del catálogo (por ejemplo SOLICITUD_PUBLICADA)',
+  })
+  @ApiQuery({
+    name: 'estado',
+    required: false,
+    description:
+      'Estado de solicitud que coincida con el estado anterior o el estado nuevo del evento',
+  })
+  @ApiQuery({
+    name: 'actor',
+    required: false,
+    description: 'UUID del usuario responsable del evento',
+  })
+  @ApiQuery({
+    name: 'fechaDesde',
+    required: false,
+    description: 'Fecha inicial (YYYY-MM-DD o ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'fechaHasta',
+    required: false,
+    description: 'Fecha final (YYYY-MM-DD o ISO 8601)',
+  })
+  @ApiQuery({ name: 'page', required: false, description: 'Página (>= 1)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Resultados por página (1 a 100)',
+  })
+  @ApiQuery({
+    name: 'order',
+    required: false,
+    enum: ['ASC', 'DESC'],
+    description: 'Orden cronológico. Por defecto DESC (más reciente primero)',
+  })
+  @ApiResponse({ status: 200, description: 'Historial paginado y filtrado' })
+  @ApiResponse({ status: 400, description: 'Filtros inválidos' })
+  @ApiResponse({ status: 403, description: 'Sin permiso para consultar el historial' })
+  @ApiResponse({ status: 404, description: 'Solicitud no encontrada' })
+  obtenerHistorial(
+    @CurrentUser() usuario: Usuario,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query() filtros: HistoryQueryDto,
+  ) {
+    return this.requestsService.obtenerHistorial(usuario, id, filtros);
   }
 
   @Get(':id')

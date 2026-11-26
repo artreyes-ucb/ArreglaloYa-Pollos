@@ -143,7 +143,7 @@ export class NotificationsService {
       .createQueryBuilder()
       .update(Notificacion)
       .set({ leida: true, fechaLectura: () => 'CURRENT_TIMESTAMP' })
-      .where('id_usuario = :idUsuario', { idUsuario })
+      .where('idNotificacion = :idNotificacion', { idNotificacion: idUsuario })
       .andWhere('leida = false')
       .execute();
 

@@ -1,3 +1,5 @@
+import { TIPO_EVENTO_HISTORIAL } from '../common/constants/historial-eventos';
+import { construirEventoHistorial } from '../common/utils/historial-solicitud.util';
 import { Cotizacion } from '../entities/cotizacion.entity';
 import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
 import { Notificacion } from '../entities/notificacion.entity';
@@ -19,6 +21,7 @@ import { ValidarPerfilTrabajadorDto } from './dto/validar-perfil-trabajador.dto'
 import { DisponibilidadTrabajador } from '../entities/disponibilidad-trabajador.entity';
 import { ServicioProgramado } from '../entities/servicio-programado.entity';
 import { SolicitudServicio } from '../entities/solicitud-servicio.entity';
+import { Usuario } from '../entities/usuario.entity';
 import { GuardarDisponibilidadDto } from './dto/guardar-disponibilidad.dto';
 import { ProgramarServicioDto } from './dto/programar-servicio.dto';
 const RELACIONES_PERFIL = {
@@ -428,6 +431,14 @@ async programarServicio(
       throw new NotFoundException('Solicitud no encontrada');
     }
 
+    const actor = await manager.getRepository(Usuario).findOne({
+      where: { idUsuario },
+    });
+
+    if (!actor) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
     const cotizacionAceptada = await manager
       .getRepository(Cotizacion)
       .findOne({
@@ -456,19 +467,17 @@ async programarServicio(
 
       const historialContratacion = manager.create(
         HistorialSolicitud,
-        {
-          solicitud: {
-            idSolicitud: solicitud.idSolicitud,
-          },
-          usuarioActor: { idUsuario },
-          tipoEvento: 'SOLICITUD_CONTRATADA',
+        construirEventoHistorial({
+          idSolicitud: solicitud.idSolicitud,
+          actor,
+          tipoEvento: TIPO_EVENTO_HISTORIAL.SOLICITUD_CONTRATADA,
           estadoAnterior,
           estadoNuevo: 'CONTRATADA',
           detalle: {
             idCotizacion: cotizacionAceptada.idCotizacion,
             origen: 'regularizacion_programacion',
           },
-        },
+        }),
       );
 
       await manager.save(HistorialSolicitud, historialContratacion);
@@ -530,19 +539,19 @@ if (
     const conflicto = await manager
       .getRepository(ServicioProgramado)
       .createQueryBuilder('programacion')
-      .where('programacion.id_perfil = :idPerfil', {
+      .where('programacion.idPerfil = :idPerfil', {
         idPerfil: perfil.idPerfil,
       })
-      .andWhere('programacion.fecha_servicio = :fecha', {
+      .andWhere('programacion.fechaServicio = :fecha', {
         fecha: dto.fechaServicio,
       })
       .andWhere('programacion.estado != :cancelado', {
         cancelado: 'CANCELADO',
       })
-      .andWhere('programacion.hora_inicio < :horaFin', {
+      .andWhere('programacion.horaInicio < :horaFin', {
         horaFin: dto.horaFin,
       })
-      .andWhere('programacion.hora_fin > :horaInicio', {
+      .andWhere('programacion.horaFin > :horaInicio', {
         horaInicio: dto.horaInicio,
       })
       .getOne();
@@ -591,19 +600,22 @@ if (
 
     await manager.save(
       HistorialSolicitud,
-      manager.create(HistorialSolicitud, {
-        solicitud: { idSolicitud: solicitud.idSolicitud },
-        usuarioActor: { idUsuario },
-        tipoEvento: 'SOLICITUD_PROGRAMADA',
-        estadoAnterior: estadoAnteriorProgramacion,
-        estadoNuevo: 'PROGRAMADA',
-        detalle: {
-          idProgramacion: guardado.idProgramacion,
-          fechaServicio: dto.fechaServicio,
-          horaInicio: dto.horaInicio,
-          horaFin: dto.horaFin,
-        },
-      }),
+      manager.create(
+        HistorialSolicitud,
+        construirEventoHistorial({
+          idSolicitud: solicitud.idSolicitud,
+          actor,
+          tipoEvento: TIPO_EVENTO_HISTORIAL.SOLICITUD_PROGRAMADA,
+          estadoAnterior: estadoAnteriorProgramacion,
+          estadoNuevo: 'PROGRAMADA',
+          detalle: {
+            idProgramacion: guardado.idProgramacion,
+            fechaServicio: dto.fechaServicio,
+            horaInicio: dto.horaInicio,
+            horaFin: dto.horaFin,
+          },
+        }),
+      ),
     );
 
     await manager.getRepository(Notificacion).save(
