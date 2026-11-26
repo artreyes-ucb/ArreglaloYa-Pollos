@@ -6,6 +6,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   CategoriaServicioItem,
   FotografiaSolicitudPayload,
+  HistoryPaginatedResponse,
+  HistoryQueryParams,
   SolicitudServicioDetalle,
   SolicitudServicioItem,
   WhatsappLinkResponse,
@@ -57,6 +59,21 @@ export class ClientRequestsComponent implements OnInit {
   // Modal detalle e historial
   protected readonly detalleAbierto = signal<SolicitudServicioDetalle | null>(null);
   protected readonly cargandoDetalle = signal(false);
+
+  // Historial avanzado
+  protected readonly historial = signal<HistoryPaginatedResponse>({
+    data: [],
+    meta: {
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 0,
+      order: 'DESC',
+      filtrosDisponibles: { tiposEvento: [], actores: [] },
+    },
+  });
+  protected readonly cargandoHistorial = signal(false);
+  protected readonly filtros = signal<HistoryQueryParams>({});
 
   // Cotizaciones recibidas
   protected readonly cotizaciones = signal<CotizacionItem[]>([]);
@@ -385,6 +402,18 @@ export class ClientRequestsComponent implements OnInit {
     this.errorCotizaciones.set('');
     this.visitas.set([]);
     this.errorVisitas.set('');
+    this.historial.set({
+      data: [],
+      meta: {
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+        order: 'DESC',
+        filtrosDisponibles: { tiposEvento: [], actores: [] },
+      },
+    });
+    this.filtros.set({});
 
     this.requestsService.obtenerDetalle(solicitud.idSolicitud).subscribe({
       next: (detalle) => {
@@ -392,6 +421,7 @@ export class ClientRequestsComponent implements OnInit {
         this.cargandoDetalle.set(false);
         this.cargarCotizaciones(detalle.idSolicitud);
         this.cargarVisitas(detalle.idSolicitud);
+        this.cargarHistorial(detalle.idSolicitud);
       },
       error: (err: unknown) => {
         this.cargandoDetalle.set(false);
@@ -411,6 +441,18 @@ export class ClientRequestsComponent implements OnInit {
     this.errorCotizaciones.set('');
     this.visitas.set([]);
     this.errorVisitas.set('');
+    this.historial.set({
+      data: [],
+      meta: {
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+        order: 'DESC',
+        filtrosDisponibles: { tiposEvento: [], actores: [] },
+      },
+    });
+    this.filtros.set({});
   }
 
   // Consultar cotizaciones recibidas
@@ -538,6 +580,114 @@ export class ClientRequestsComponent implements OnInit {
     }
 
     this.solicitudACancelar.set(null);
+  }
+
+  // Historial avanzado
+  protected cargarHistorial(idSolicitud: string): void {
+    this.cargandoHistorial.set(true);
+    const params = this.filtros();
+
+    this.requestsService.obtenerHistorial(idSolicitud, params).subscribe({
+      next: (res) => {
+        this.historial.set(res);
+        this.cargandoHistorial.set(false);
+      },
+      error: (err: unknown) => {
+        this.cargandoHistorial.set(false);
+        console.error('Error cargando historial:', err);
+        this.historial.set({
+          data: [],
+          meta: {
+            total: 0,
+            page: params.page ?? 1,
+            limit: params.limit ?? 10,
+            totalPages: 0,
+            order: (params.order ?? 'DESC') as 'ASC' | 'DESC',
+            filtrosDisponibles: { tiposEvento: [], actores: [] },
+          },
+        });
+      },
+    });
+  }
+
+  protected onFilterChange(
+    clave: keyof HistoryQueryParams,
+    evento: Event | string,
+  ): void {
+    let valor: unknown;
+
+    if (typeof evento === 'string') {
+      valor = evento;
+    } else {
+      const target = evento.target as HTMLSelectElement | HTMLInputElement;
+      valor = target.value;
+    }
+
+    this.filtros.update((actuales) => {
+      const nuevas: HistoryQueryParams = { ...actuales };
+
+      switch (clave) {
+        case 'tipoEvento':
+        case 'estado':
+        case 'actor':
+        case 'fechaDesde':
+        case 'fechaHasta':
+          if (valor === '') {
+            delete nuevas[clave];
+          } else {
+            nuevas[clave] = valor as string;
+          }
+          break;
+        case 'order':
+          nuevas.order = (valor as 'ASC' | 'DESC') ?? 'DESC';
+          break;
+        case 'page':
+        case 'limit':
+          nuevas[clave] = valor ? Number(valor) : undefined;
+          break;
+      }
+
+      return nuevas;
+    });
+
+    const detalle = this.detalleAbierto();
+    if (detalle) {
+      this.cargarHistorial(detalle.idSolicitud);
+    }
+  }
+
+  protected limpiarFiltros(): void {
+    this.filtros.set({});
+    const detalle = this.detalleAbierto();
+    if (detalle) {
+      this.cargarHistorial(detalle.idSolicitud);
+    }
+  }
+
+  protected esFiltrosPorDefecto(): boolean {
+    const f = this.filtros();
+    return (
+      !f.tipoEvento &&
+      !f.estado &&
+      !f.actor &&
+      !f.fechaDesde &&
+      !f.fechaHasta &&
+      f.order === 'DESC' &&
+      (f.page ?? 1) === 1 &&
+      (f.limit ?? 10) === 10
+    );
+  }
+
+  protected cambiarPagina(nuevaPage: number): void {
+    if (nuevaPage <= 0) return;
+    this.filtros.update((actuales) => ({
+      ...actuales,
+      page: nuevaPage,
+    }));
+    const detalle = this.detalleAbierto();
+    if (detalle) {
+      this.cargarHistorial(detalle.idSolicitud);
+    }
   }
 
   protected confirmarCancelacion(): void {

@@ -1,7 +1,12 @@
 ﻿import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import {
+  TIPO_EVENTO_HISTORIAL,
+  TipoEventoHistorial,
+} from '../common/constants/historial-eventos';
 import { Rol } from '../common/enums/rol.enum';
+import { construirEventoHistorial } from '../common/utils/historial-solicitud.util';
 import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
 import { Notificacion } from '../entities/notificacion.entity';
 import { PerfilTrabajador } from '../entities/perfil-trabajador.entity';
@@ -18,6 +23,14 @@ const ESTADOS_SOLICITUD_VISITA = ['ACTIVA', 'EN_COTIZACION', 'CONTRATADA', 'PROG
 const TRANSICIONES_VISITA: Record<string, string[]> = {
   SOLICITADA: ['ACEPTADA', 'RECHAZADA', 'CANCELADA'],
   ACEPTADA: ['CANCELADA', 'REALIZADA', 'NO_REALIZADA'],
+};
+
+const TIPO_EVENTO_VISITA: Record<string, TipoEventoHistorial> = {
+  ACEPTADA: TIPO_EVENTO_HISTORIAL.VISITA_PREVIA_ACEPTADA,
+  RECHAZADA: TIPO_EVENTO_HISTORIAL.VISITA_PREVIA_RECHAZADA,
+  CANCELADA: TIPO_EVENTO_HISTORIAL.VISITA_PREVIA_CANCELADA,
+  REALIZADA: TIPO_EVENTO_HISTORIAL.VISITA_PREVIA_REALIZADA,
+  NO_REALIZADA: TIPO_EVENTO_HISTORIAL.VISITA_PREVIA_NO_REALIZADA,
 };
 
 @Injectable()
@@ -74,14 +87,21 @@ export class VisitsService {
       const nueva = await manager.getRepository(VisitaPrevia).save(visita);
 
       await manager.getRepository(HistorialSolicitud).save(
-        manager.getRepository(HistorialSolicitud).create({
-          solicitud: { idSolicitud: solicitud.idSolicitud },
-          usuarioActor: { idUsuario: usuario.idUsuario },
-          tipoEvento: 'VISITA_PREVIA_SOLICITADA',
-          estadoAnterior: solicitud.estado,
-          estadoNuevo: solicitud.estado,
-          detalle: { idVisita: nueva.idVisita, fechaPropuesta: fecha, horaPropuesta: hora, idPerfil: perfil?.idPerfil ?? null },
-        }),
+        manager.getRepository(HistorialSolicitud).create(
+          construirEventoHistorial({
+            idSolicitud: solicitud.idSolicitud,
+            actor: usuario,
+            tipoEvento: TIPO_EVENTO_HISTORIAL.VISITA_PREVIA_SOLICITADA,
+            estadoAnterior: solicitud.estado,
+            estadoNuevo: solicitud.estado,
+            detalle: {
+              idVisita: nueva.idVisita,
+              fechaPropuesta: fecha,
+              horaPropuesta: hora,
+              idPerfil: perfil?.idPerfil ?? null,
+            },
+          }),
+        ),
       );
 
       await manager.getRepository(RegistroAuditoria).save(
@@ -133,11 +153,11 @@ export class VisitsService {
       .leftJoinAndSelect('perfil.usuario', 'trabajador')
       .leftJoinAndSelect('v.usuarioSolicitante', 'solicitante')
       .leftJoinAndSelect('v.usuarioRespuesta', 'respondedor')
-      .where('s.id_solicitud = :idSolicitud', { idSolicitud })
+      .where('s.idSolicitud = :idSolicitud', { idSolicitud })
       .orderBy('v.fechaCreacion', 'DESC');
 
     if (!esCliente && ![Rol.ADMIN, Rol.SUPERADMIN].includes(usuario.rolActivo)) {
-      qb.andWhere('perfil.id_perfil = :idPerfil', { idPerfil: perfil!.idPerfil });
+      qb.andWhere('perfil.idPerfil = :idPerfil', { idPerfil: perfil!.idPerfil });
     }
 
     const visitas = await qb.getMany();
@@ -214,14 +234,18 @@ export class VisitsService {
       const actualizada = await manager.getRepository(VisitaPrevia).save(visita);
 
       await manager.getRepository(HistorialSolicitud).save(
-        manager.getRepository(HistorialSolicitud).create({
-          solicitud: { idSolicitud: visita.solicitud.idSolicitud },
-          usuarioActor: { idUsuario: usuario.idUsuario },
-          tipoEvento: `VISITA_PREVIA_${dto.estado}`,
-          estadoAnterior,
-          estadoNuevo: dto.estado,
-          detalle: { idVisita, resultado: actualizada.resultado },
-        }),
+        manager.getRepository(HistorialSolicitud).create(
+          construirEventoHistorial({
+            idSolicitud: visita.solicitud.idSolicitud,
+            actor: usuario,
+            tipoEvento:
+              TIPO_EVENTO_VISITA[dto.estado] ??
+              TIPO_EVENTO_HISTORIAL.VISITA_PREVIA_SOLICITADA,
+            estadoAnterior,
+            estadoNuevo: dto.estado,
+            detalle: { idVisita, resultado: actualizada.resultado },
+          }),
+        ),
       );
 
       await manager.getRepository(RegistroAuditoria).save(

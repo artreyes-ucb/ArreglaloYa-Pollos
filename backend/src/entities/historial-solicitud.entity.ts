@@ -47,6 +47,31 @@ export class HistorialSolicitud {
   @Column({ name: 'detalle', type: 'jsonb', nullable: true })
   detalle: Record<string, unknown> | null;
 
+  /**
+   * Fotografía del nombre del actor al momento del evento. Permite conservar
+   * la trazabilidad aunque el usuario cambie sus datos posteriormente.
+   */
+  @Column({
+    name: 'actor_nombre',
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  actorNombre: string | null;
+
+  /** Rol activo del actor al momento del evento. */
+  @Column({
+    name: 'rol_actor',
+    type: 'varchar',
+    length: 30,
+    nullable: true,
+  })
+  rolActor: string | null;
+
+  /** `true` cuando la acción la ejecutó el sistema, no una persona. */
+  @Column({ name: 'automatico', type: 'boolean', default: false })
+  automatico: boolean;
+
   @CreateDateColumn({ name: 'fecha_evento', type: 'timestamp' })
   fechaEvento: Date;
 }

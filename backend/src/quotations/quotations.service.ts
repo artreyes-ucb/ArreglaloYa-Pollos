@@ -8,6 +8,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 
+import { TIPO_EVENTO_HISTORIAL } from '../common/constants/historial-eventos';
+import { construirEventoHistorial } from '../common/utils/historial-solicitud.util';
 import { Cotizacion } from '../entities/cotizacion.entity';
 import { SolicitudServicio } from '../entities/solicitud-servicio.entity';
 import { PerfilTrabajador } from '../entities/perfil-trabajador.entity';
@@ -131,20 +133,23 @@ export class QuotationsService {
       async (manager) => {
         const nueva = await manager.save(Cotizacion, cotizacion);
 
-        const historial = manager.create(HistorialSolicitud, {
-          solicitud: { idSolicitud: solicitud.idSolicitud },
-          usuarioActor: { idUsuario: usuario.idUsuario },
-          tipoEvento: 'COTIZACION_ENVIADA',
-          estadoAnterior: solicitud.estado,
-          estadoNuevo:
-            solicitud.estado === 'ACTIVA'
-              ? 'EN_COTIZACION'
-              : solicitud.estado,
-          detalle: {
-            idCotizacion: nueva.idCotizacion,
-            precioTotal: total.toFixed(2),
-          },
-        });
+        const historial = manager.create(
+          HistorialSolicitud,
+          construirEventoHistorial({
+            idSolicitud: solicitud.idSolicitud,
+            actor: usuario,
+            tipoEvento: TIPO_EVENTO_HISTORIAL.COTIZACION_ENVIADA,
+            estadoAnterior: solicitud.estado,
+            estadoNuevo:
+              solicitud.estado === 'ACTIVA'
+                ? 'EN_COTIZACION'
+                : solicitud.estado,
+            detalle: {
+              idCotizacion: nueva.idCotizacion,
+              precioTotal: total.toFixed(2),
+            },
+          }),
+        );
 
         await manager.save(HistorialSolicitud, historial);
 
@@ -295,10 +300,10 @@ export class QuotationsService {
           const otraAceptada = await manager
             .getRepository(Cotizacion)
             .createQueryBuilder('cotizacion')
-            .where('cotizacion.id_solicitud = :idSolicitud', {
+            .where('cotizacion.solicitud.idSolicitud = :idSolicitud', {
               idSolicitud: cotizacion.solicitud.idSolicitud,
             })
-            .andWhere('cotizacion.id_cotizacion != :idCotizacion', {
+            .andWhere('cotizacion.idCotizacion != :idCotizacion', {
               idCotizacion,
             })
             .andWhere("cotizacion.estado = 'ACEPTADA'")
@@ -320,19 +325,23 @@ export class QuotationsService {
           cotizacion,
         );
 
-        const historial = manager.create(HistorialSolicitud, {
-          solicitud: {
+        const historial = manager.create(
+          HistorialSolicitud,
+          construirEventoHistorial({
             idSolicitud: cotizacion.solicitud.idSolicitud,
-          },
-          usuarioActor: { idUsuario: usuario.idUsuario },
-          tipoEvento: `COTIZACION_${dto.decision}`,
-          estadoAnterior: 'ENVIADA',
-          estadoNuevo: dto.decision,
-          detalle: {
-            idCotizacion,
-            precioTotal: cotizacion.precioTotal,
-          },
-        });
+            actor: usuario,
+            tipoEvento:
+              dto.decision === 'ACEPTADA'
+                ? TIPO_EVENTO_HISTORIAL.COTIZACION_ACEPTADA
+                : TIPO_EVENTO_HISTORIAL.COTIZACION_RECHAZADA,
+            estadoAnterior: 'ENVIADA',
+            estadoNuevo: dto.decision,
+            detalle: {
+              idCotizacion,
+              precioTotal: cotizacion.precioTotal,
+            },
+          }),
+        );
 
         await manager.save(HistorialSolicitud, historial);
 
@@ -369,21 +378,17 @@ export class QuotationsService {
 
             const historialContratacion = manager.create(
               HistorialSolicitud,
-              {
-                solicitud: {
-                  idSolicitud: solicitud.idSolicitud,
-                },
-                usuarioActor: {
-                  idUsuario: usuario.idUsuario,
-                },
-                tipoEvento: 'SOLICITUD_CONTRATADA',
+              construirEventoHistorial({
+                idSolicitud: solicitud.idSolicitud,
+                actor: usuario,
+                tipoEvento: TIPO_EVENTO_HISTORIAL.SOLICITUD_CONTRATADA,
                 estadoAnterior,
                 estadoNuevo: 'CONTRATADA',
                 detalle: {
                   idCotizacion,
                   precioTotal: cotizacion.precioTotal,
                 },
-              },
+              }),
             );
 
             await manager.save(

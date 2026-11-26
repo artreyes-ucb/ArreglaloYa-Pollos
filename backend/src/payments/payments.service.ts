@@ -5,11 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { AuditService } from '../audit/audit.service';
+import { TIPO_EVENTO_HISTORIAL } from '../common/constants/historial-eventos';
 import { Rol } from '../common/enums/rol.enum';
+import { construirEventoHistorial } from '../common/utils/historial-solicitud.util';
 import { Comision } from '../entities/comision.entity';
 import { Evaluacion } from '../entities/evaluacion.entity';
+import { HistorialSolicitud } from '../entities/historial-solicitud.entity';
 import { Pago } from '../entities/pago.entity';
 import { Reclamo } from '../entities/reclamo.entity';
 import { Reembolso } from '../entities/reembolso.entity';
@@ -51,6 +54,7 @@ export class PaymentsService {
     private readonly evaluacionRepo: Repository<Evaluacion>,
     @InjectRepository(Reclamo)
     private readonly reclamoRepo: Repository<Reclamo>,
+    private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -71,9 +75,9 @@ export class PaymentsService {
       .orderBy('sp.fechaCreacion', 'DESC');
 
     if (usuario.rolActivo === Rol.CLIENTE) {
-      qb.where('cliente.id_usuario = :idUsuario', { idUsuario: usuario.idUsuario });
+      qb.where('cliente.idUsuario = :idUsuario', { idUsuario: usuario.idUsuario });
     } else if (usuario.rolActivo === Rol.TRABAJADOR) {
-      qb.where('trabajador.id_usuario = :idUsuario', { idUsuario: usuario.idUsuario });
+      qb.where('trabajador.idUsuario = :idUsuario', { idUsuario: usuario.idUsuario });
     }
 
     const servicios = await qb.getMany();
@@ -355,10 +359,30 @@ export class PaymentsService {
       throw new BadRequestException(`El servicio ya está en estado ${sp.estado}`);
     }
 
+    const estadoAnteriorServicio = sp.estado;
     sp.marcadoTerminadoPorTrabajador = true;
     sp.fechaDeclaracionTrabajador = new Date();
     sp.estado = 'EN_PROCESO';
-    await this.servicioRepo.save(sp);
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(ServicioProgramado).save(sp);
+      await manager.getRepository(HistorialSolicitud).save(
+        manager.getRepository(HistorialSolicitud).create(
+          construirEventoHistorial({
+            idSolicitud: sp.solicitud.idSolicitud,
+            actor: usuario,
+            tipoEvento: TIPO_EVENTO_HISTORIAL.SERVICIO_EN_PROCESO,
+            estadoAnterior: sp.solicitud.estado,
+            estadoNuevo: sp.solicitud.estado,
+            detalle: {
+              idProgramacion: sp.idProgramacion,
+              estadoServicioAnterior: estadoAnteriorServicio,
+              estadoServicioNuevo: sp.estado,
+            },
+          }),
+        ),
+      );
+    });
 
     await this.auditService.registrarEvento(
       usuario.idUsuario,
@@ -396,13 +420,28 @@ export class PaymentsService {
       throw new BadRequestException(`El servicio ya está en estado ${sp.estado}`);
     }
 
+    const estadoAnteriorSolicitud = sp.solicitud.estado;
     sp.confirmadoPorCliente = true;
     sp.fechaConfirmacionCliente = new Date();
     sp.estado = 'COMPLETADO';
-    await this.servicioRepo.save(sp);
-
     sp.solicitud.estado = 'COMPLETADA';
-    await this.solicitudRepo.save(sp.solicitud);
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(ServicioProgramado).save(sp);
+      await manager.getRepository(SolicitudServicio).save(sp.solicitud);
+      await manager.getRepository(HistorialSolicitud).save(
+        manager.getRepository(HistorialSolicitud).create(
+          construirEventoHistorial({
+            idSolicitud: sp.solicitud.idSolicitud,
+            actor: usuario,
+            tipoEvento: TIPO_EVENTO_HISTORIAL.SERVICIO_COMPLETADO,
+            estadoAnterior: estadoAnteriorSolicitud,
+            estadoNuevo: 'COMPLETADA',
+            detalle: { idProgramacion: sp.idProgramacion },
+          }),
+        ),
+      );
+    });
 
     // Calcular comisión del 5% automáticamente si ya existe precio acordado
     if (Number(sp.precioAcordado) > 0) {
@@ -458,14 +497,32 @@ export class PaymentsService {
       );
     }
 
+    const estadoAnteriorSolicitud = sp.solicitud.estado;
     sp.estado = 'CANCELADO';
     sp.motivoCancelacion = dto.motivo.trim();
     sp.canceladoPorUsuarioId = usuario.idUsuario;
     sp.fechaCancelacion = new Date();
-    await this.servicioRepo.save(sp);
-
     sp.solicitud.estado = 'CANCELADA';
-    await this.solicitudRepo.save(sp.solicitud);
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(ServicioProgramado).save(sp);
+      await manager.getRepository(SolicitudServicio).save(sp.solicitud);
+      await manager.getRepository(HistorialSolicitud).save(
+        manager.getRepository(HistorialSolicitud).create(
+          construirEventoHistorial({
+            idSolicitud: sp.solicitud.idSolicitud,
+            actor: usuario,
+            tipoEvento: TIPO_EVENTO_HISTORIAL.SERVICIO_CANCELADO,
+            estadoAnterior: estadoAnteriorSolicitud,
+            estadoNuevo: 'CANCELADA',
+            detalle: {
+              idProgramacion: sp.idProgramacion,
+              motivo: sp.motivoCancelacion,
+            },
+          }),
+        ),
+      );
+    });
 
     await this.auditService.registrarEvento(
       usuario.idUsuario,
