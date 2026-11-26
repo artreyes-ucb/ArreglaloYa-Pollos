@@ -4,15 +4,28 @@
       <span class="eyebrow">Centro de avisos · HU-F21 y CU-25</span>
       <h1>Notificaciones internas</h1>
       <p class="page__subtitle">
-        Consulta eventos clave sobre tus solicitudes, cambios de estado, oportunidades compatibles
-        y avisos de vigencia dentro de Arréglalo Ya.
+        Consulta y gestiona avisos de solicitudes, cotizaciones, visitas, pagos y reclamos
+        configurados según tus preferencias personales.
       </p>
     </div>
 
     <div class="page__actions">
+      <button
+        class="btn btn--secondary btn--sm btn--icon"
+        type="button"
+        (click)="abrirModalPreferencias()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        Configurar preferencias
+      </button>
+
       <button class="btn btn--secondary btn--sm" type="button" (click)="cargar()">
         Actualizar
       </button>
+
       @if (notificationsService.totalNoLeidas() > 0) {
         <button
           class="btn btn--primary btn--sm"
@@ -34,25 +47,83 @@
     <div class="alert alert--error" role="alert">{{ error() }}</div>
   }
 
-  <div class="notif-filters">
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="!soloNoLeidas()"
-      (click)="cambiarFiltro(false)"
-    >
-      Todas
-    </button>
-    <button
-      type="button"
-      class="filter-pill"
-      [class.filter-pill--activo]="soloNoLeidas()"
-      (click)="cambiarFiltro(true)"
-    >
-      Solo no leídas ({{ notificationsService.totalNoLeidas() }})
-    </button>
+  <!-- Barra de Filtros y Búsqueda -->
+  <div class="notif-toolbar card">
+    <div class="notif-filters-row">
+      <div class="notif-status-pills">
+        <button
+          type="button"
+          class="filter-pill"
+          [class.filter-pill--activo]="filtroLectura() === 'todas'"
+          (click)="cambiarFiltroLectura('todas')"
+        >
+          Todas
+        </button>
+        <button
+          type="button"
+          class="filter-pill"
+          [class.filter-pill--activo]="filtroLectura() === 'no_leidas'"
+          (click)="cambiarFiltroLectura('no_leidas')"
+        >
+          No leídas ({{ notificationsService.totalNoLeidas() }})
+        </button>
+        <button
+          type="button"
+          class="filter-pill"
+          [class.filter-pill--activo]="filtroLectura() === 'leidas'"
+          (click)="cambiarFiltroLectura('leidas')"
+        >
+          Leídas
+        </button>
+      </div>
+
+      <div class="notif-controls">
+        <div class="notif-select-wrapper">
+          <select
+            class="form-control notif-select"
+            [value]="filtroTipo()"
+            (change)="cambiarFiltroTipo($event)"
+            aria-label="Filtrar por tipo"
+          >
+            <option value="">Todos los tipos</option>
+            <option value="SOLICITUD_PUBLICADA">Publicaciones de solicitud</option>
+            <option value="NUEVA_SOLICITUD_COMPATIBLE">Oportunidades compatibles</option>
+            <option value="COTIZACION">Cotizaciones</option>
+            <option value="PROGRAMACION">Servicios programados</option>
+            <option value="VISITA_PREVIA">Visitas previas</option>
+            <option value="ANTICIPO_REGISTRADO">Anticipos abonados</option>
+            <option value="PAGO_FINAL_REGISTRADO">Pagos finales</option>
+            <option value="RECLAMO_RECIBIDO">Reclamos</option>
+            <option value="SOLICITUD_CANCELADA">Cancelaciones</option>
+            <option value="SOLICITUD_VENCIDA">Vencidas</option>
+          </select>
+        </div>
+
+        <div class="notif-search-wrapper">
+          <input
+            type="search"
+            class="form-control notif-search-input"
+            placeholder="Buscar en título o mensaje…"
+            [value]="busquedaTexto()"
+            (input)="onBuscarTexto($event)"
+            aria-label="Buscar notificaciones"
+          />
+        </div>
+
+        @if (filtroLectura() !== 'todas' || filtroTipo() !== '' || busquedaTexto() !== '') {
+          <button
+            type="button"
+            class="btn btn--ghost btn--sm"
+            (click)="limpiarFiltros()"
+          >
+            Restablecer
+          </button>
+        }
+      </div>
+    </div>
   </div>
 
+  <!-- Contenido de Notificaciones -->
   @if (cargando()) {
     <div class="card">
       <div class="card__body empty-state">
@@ -63,11 +134,19 @@
   } @else if (notificaciones().length === 0) {
     <div class="card">
       <div class="card__body empty-state">
-        <strong>No tienes avisos pendientes</strong>
+        <strong>No se encontraron notificaciones</strong>
         <p>
-          Cuando se publiquen solicitudes compatibles o cambie el estado de una solicitud tuya,
-          verás las notificaciones aquí.
+          No hay notificaciones que coincidan con los filtros aplicados o no tienes avisos pendientes.
         </p>
+        @if (filtroLectura() !== 'todas' || filtroTipo() !== '' || busquedaTexto() !== '') {
+          <button
+            type="button"
+            class="btn btn--secondary btn--sm"
+            (click)="limpiarFiltros()"
+          >
+            Ver todas las notificaciones
+          </button>
+        }
       </div>
     </div>
   } @else {
@@ -78,7 +157,7 @@
             <div class="notif-item__top">
               <div class="inline-stack">
                 @if (!item.leida) {
-                  <span class="unread-dot" aria-label="Sin leer"></span>
+                  <span class="unread-dot" title="No leída" aria-label="Sin leer"></span>
                 }
                 <span [class]="claseTipo(item.tipo)">{{ etiquetaTipo(item.tipo) }}</span>
                 <strong class="notif-item__title">{{ item.titulo }}</strong>
@@ -90,30 +169,185 @@
           </div>
 
           <div class="notif-item__actions">
-            @if (item.entidadRelacionada === 'solicitudes_servicio') {
+            @if (item.entidadRelacionada) {
               <button
                 type="button"
                 class="btn btn--secondary btn--sm"
                 (click)="abrirReferencia(item)"
               >
-                Ir a solicitudes
+                Ver detalle
               </button>
             }
 
             @if (!item.leida) {
               <button
                 type="button"
-                class="btn btn--ghost btn--sm"
+                class="btn btn--primary btn--sm"
                 (click)="marcarLeida(item)"
+                title="Marcar como leída"
               >
-                Marcar como leída
+                Marcar leída
               </button>
             } @else {
-              <span class="notif-read-tag">Leída</span>
+              <button
+                type="button"
+                class="btn btn--ghost btn--sm btn--unread-toggle"
+                (click)="marcarNoLeida(item)"
+                title="Marcar como no leída"
+              >
+                Marcar no leída
+              </button>
             }
           </div>
         </article>
       }
+    </div>
+  }
+
+  <!-- Modal de Configuración de Preferencias -->
+  @if (modalPreferenciasAbierto()) {
+    <div class="modal-backdrop" (click)="cerrarModalPreferencias()">
+      <div class="modal-content" (click)="$event.stopPropagation()" role="dialog" aria-labelledby="modal-title">
+        <div class="modal-header">
+          <div>
+            <h2 id="modal-title" class="modal-title">Preferencias de notificaciones</h2>
+            <p class="modal-subtitle">
+              Configura las alertas y avisos que deseas recibir en la plataforma.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="modal-close"
+            (click)="cerrarModalPreferencias()"
+            aria-label="Cerrar modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        @if (errorPreferencias()) {
+          <div class="alert alert--error" role="alert">{{ errorPreferencias() }}</div>
+        }
+        @if (exitoPreferencias()) {
+          <div class="alert alert--success" role="status">{{ exitoPreferencias() }}</div>
+        }
+
+        @if (cargandoPreferencias()) {
+          <div class="empty-state" style="padding: 2rem;">
+            <span class="spinner spinner--dark" aria-hidden="true"></span>
+            <p>Cargando preferencias…</p>
+          </div>
+        } @else {
+          <div class="pref-list">
+            <!-- Solicitudes -->
+            <label class="pref-item">
+              <input
+                type="checkbox"
+                class="pref-checkbox"
+                [checked]="prefSolicitudes()"
+                (change)="togglePref('solicitudes')"
+              />
+              <div class="pref-info">
+                <strong>Solicitudes y oportunidades</strong>
+                <p>Publicación, modificación, cancelación y compatibilidad de solicitudes de servicio.</p>
+              </div>
+            </label>
+
+            <!-- Cotizaciones -->
+            <label class="pref-item">
+              <input
+                type="checkbox"
+                class="pref-checkbox"
+                [checked]="prefCotizaciones()"
+                (change)="togglePref('cotizaciones')"
+              />
+              <div class="pref-info">
+                <strong>Cotizaciones y presupuestos</strong>
+                <p>Nuevas cotizaciones enviadas por trabajadores o recibidas por clientes.</p>
+              </div>
+            </label>
+
+            <!-- Servicios -->
+            <label class="pref-item">
+              <input
+                type="checkbox"
+                class="pref-checkbox"
+                [checked]="prefServicios()"
+                (change)="togglePref('servicios')"
+              />
+              <div class="pref-info">
+                <strong>Servicios programados y visitas</strong>
+                <p>Confirmaciones de fecha y hora, recordatorios de visitas previas y culminación de trabajos.</p>
+              </div>
+            </label>
+
+            <!-- Pagos -->
+            <label class="pref-item">
+              <input
+                type="checkbox"
+                class="pref-checkbox"
+                [checked]="prefPagos()"
+                (change)="togglePref('pagos')"
+              />
+              <div class="pref-info">
+                <strong>Pagos y reembolsos</strong>
+                <p>Registro de anticipo del 25%, pagos finales aprobados y resoluciones de reembolso.</p>
+              </div>
+            </label>
+
+            <!-- Reclamos -->
+            <label class="pref-item">
+              <input
+                type="checkbox"
+                class="pref-checkbox"
+                [checked]="prefReclamos()"
+                (change)="togglePref('reclamos')"
+              />
+              <div class="pref-info">
+                <strong>Reclamos y evaluaciones</strong>
+                <p>Notificaciones de apertura o resolución de reclamos y calificaciones recibidas.</p>
+              </div>
+            </label>
+
+            <!-- Sistema -->
+            <label class="pref-item">
+              <input
+                type="checkbox"
+                class="pref-checkbox"
+                [checked]="prefSistema()"
+                (change)="togglePref('sistema')"
+              />
+              <div class="pref-info">
+                <strong>Avisos del sistema</strong>
+                <p>Comunicaciones generales, términos de servicio y novedades de la plataforma.</p>
+              </div>
+            </label>
+          </div>
+        }
+
+        <div class="modal-footer">
+          <button
+            type="button"
+            class="btn btn--ghost"
+            (click)="cerrarModalPreferencias()"
+            [disabled]="guardandoPreferencias()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="btn btn--primary"
+            (click)="guardarPreferencias()"
+            [disabled]="cargandoPreferencias() || guardandoPreferencias()"
+          >
+            @if (guardandoPreferencias()) {
+              Guardando…
+            } @else {
+              Guardar preferencias
+            }
+          </button>
+        </div>
+      </div>
     </div>
   }
 </section>
