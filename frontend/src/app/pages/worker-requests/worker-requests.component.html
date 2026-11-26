@@ -293,13 +293,47 @@
           @else {
             @for (v of visitas(); track v.idVisita) {
               <div class="quote-form" style="margin-top:10px">
-                <strong>{{ v.fechaPropuesta }} {{ v.horaPropuesta.slice(0,5) }}</strong> <span class="chip">{{ v.estado }}</span>
+                <strong>{{ (v.fechaConfirmada || v.fechaPropuesta) }} {{ (v.horaConfirmada || v.horaPropuesta).slice(0,5) }}{{ v.horaFinConfirmada || v.horaFinPropuesta ? ' - ' + (v.horaFinConfirmada || v.horaFinPropuesta || '').slice(0,5) : '' }}</strong> <span class="chip">{{ v.estado }}</span>
                 @if (v.resultado) { <p class="mb-0">{{ v.resultado }}</p> }
-                @if (v.estado === "SOLICITADA") {
-                  <div class="inline-stack">
-                    <button type="button" class="btn btn--primary btn--sm" [disabled]="guardandoVisita()" (click)="responderVisita(v,'ACEPTADA')">Aceptar</button>
-                    <button type="button" class="btn btn--secondary btn--sm" [disabled]="guardandoVisita()" (click)="responderVisita(v,'RECHAZADA')">Rechazar</button>
+                @if (reprogramacionPendiente(v); as rp) {
+                  <div class="quote-form" style="margin-top:8px">
+                    <strong>Reprogramación pendiente</strong>
+                    <p class="mb-0">{{ rp.fechaAnterior }} {{ rp.horaInicioAnterior.slice(0,5) }}{{ rp.horaFinAnterior ? '-' + rp.horaFinAnterior.slice(0,5) : '' }} → {{ rp.fechaPropuesta }} {{ rp.horaInicioPropuesta.slice(0,5) }}-{{ rp.horaFinPropuesta.slice(0,5) }}</p>
+                    <p class="field__hint">Motivo: {{ rp.motivo }}</p>
+                    @if (rp.rolSolicitante !== 'TRABAJADOR') {
+                      <div class="inline-stack">
+                        <button type="button" class="btn btn--primary btn--sm" [disabled]="respuestaReprogramacionId()===rp.idReprogramacion" (click)="responderReprogramacion(v,rp,'ACEPTADA')">Aceptar reprogramación</button>
+                        <button type="button" class="btn btn--secondary btn--sm" [disabled]="respuestaReprogramacionId()===rp.idReprogramacion" (click)="responderReprogramacion(v,rp,'RECHAZADA')">Rechazar</button>
+                      </div>
+                    } @else {
+                      <div class="inline-stack"><button type="button" class="btn btn--secondary btn--sm" [disabled]="respuestaReprogramacionId()===rp.idReprogramacion" (click)="cancelarReprogramacion(v,rp)">Cancelar solicitud</button></div>
+                    }
                   </div>
+                }
+                @if (v.estado === "SOLICITADA" || v.estado === "ACEPTADA") {
+                  <div class="inline-stack">
+                    @if (v.estado === "SOLICITADA") { <button type="button" class="btn btn--primary btn--sm" [disabled]="guardandoVisita()" (click)="responderVisita(v,'ACEPTADA')">Aceptar</button> }
+                    @if (v.estado === "SOLICITADA") { <button type="button" class="btn btn--secondary btn--sm" [disabled]="guardandoVisita()" (click)="responderVisita(v,'RECHAZADA')">Rechazar</button> }
+                    <button type="button" class="btn btn--secondary btn--sm" [disabled]="guardandoVisita()" (click)="responderVisita(v,'CANCELADA')">Cancelar visita</button>
+                    @if (!v.trabajador) { <span class="field__hint">Para reprogramar, primero debe existir un trabajador asignado a la visita.</span> }
+                    @else if (puedeSolicitarReprogramacion(v)) { <button type="button" class="btn btn--secondary btn--sm" [disabled]="guardandoReprogramacion()" (click)="iniciarReprogramacion(v)">Reprogramar</button> }
+                  </div>
+                }
+                @if (reprogramandoVisitaId() === v.idVisita) {
+                  <form class="quote-form" [formGroup]="reprogramForm" (ngSubmit)="enviarReprogramacion(v)" style="margin-top:8px">
+                    <strong>Solicitar reprogramación</strong>
+                    <div class="quote-form__grid">
+                      <div class="field"><label>Nueva fecha</label><input type="date" formControlName="fechaPropuesta" /></div>
+                      <div class="field"><label>Hora inicio</label><input type="time" formControlName="horaInicioPropuesta" /></div>
+                      <div class="field"><label>Hora fin</label><input type="time" formControlName="horaFinPropuesta" /></div>
+                    </div>
+                    <div class="field"><label>Motivo</label><textarea rows="2" formControlName="motivo"></textarea></div>
+                    <p class="field__hint">La visita no cambiará hasta que la contraparte acepte la propuesta.</p>
+                    <div class="inline-stack">
+                      <button type="submit" class="btn btn--primary btn--sm" [disabled]="guardandoReprogramacion()">{{ guardandoReprogramacion() ? 'Enviando...' : 'Enviar propuesta' }}</button>
+                      <button type="button" class="btn btn--secondary btn--sm" [disabled]="guardandoReprogramacion()" (click)="cancelarReprogramacionForm()">Cancelar</button>
+                    </div>
+                  </form>
                 }
               </div>
             }

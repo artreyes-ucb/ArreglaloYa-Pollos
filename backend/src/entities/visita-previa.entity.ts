@@ -1,15 +1,17 @@
-import {
+﻿import {
   Column,
   CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { SolicitudServicio } from './solicitud-servicio.entity';
 import { PerfilTrabajador } from './perfil-trabajador.entity';
 import { Usuario } from './usuario.entity';
+import { ReprogramacionVisita } from './reprogramacion-visita.entity';
 
 @Entity('visitas_previas')
 export class VisitaPrevia {
@@ -50,11 +52,17 @@ export class VisitaPrevia {
   @Column({ name: 'hora_propuesta', type: 'time' })
   horaPropuesta: string;
 
+  @Column({ name: 'hora_fin_propuesta', type: 'time', nullable: true })
+  horaFinPropuesta: string | null;
+
   @Column({ name: 'fecha_confirmada', type: 'date', nullable: true })
   fechaConfirmada: string | null;
 
   @Column({ name: 'hora_confirmada', type: 'time', nullable: true })
   horaConfirmada: string | null;
+
+  @Column({ name: 'hora_fin_confirmada', type: 'time', nullable: true })
+  horaFinConfirmada: string | null;
 
   @Column({
     name: 'estado',
@@ -66,6 +74,9 @@ export class VisitaPrevia {
 
   @Column({ name: 'resultado', type: 'text', nullable: true })
   resultado: string | null;
+
+  @OneToMany(() => ReprogramacionVisita, (reprogramacion) => reprogramacion.visita)
+  reprogramaciones: ReprogramacionVisita[];
 
   @CreateDateColumn({ name: 'fecha_creacion', type: 'timestamp' })
   fechaCreacion: Date;
