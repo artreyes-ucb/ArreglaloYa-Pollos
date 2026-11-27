@@ -291,6 +291,16 @@ export class QuotationsService {
           );
         }
 
+        if (
+  dto.decision === 'ACEPTADA' &&
+  cotizacionBloqueada.fechaVencimiento &&
+  new Date(cotizacionBloqueada.fechaVencimiento).getTime() <= Date.now()
+) {
+  throw new BadRequestException(
+    'No puedes aceptar una cotización vencida.',
+  );
+}
+
         if (dto.decision === 'ACEPTADA') {
           const otraAceptada = await manager
             .getRepository(Cotizacion)
@@ -311,14 +321,14 @@ export class QuotationsService {
           }
         }
 
-        cotizacion.estado = dto.decision;
-        cotizacion.fechaRespuesta = new Date();
-        cotizacion.usuarioDecision = usuario;
+        cotizacionBloqueada.estado = dto.decision;
+cotizacionBloqueada.fechaRespuesta = new Date();
+cotizacionBloqueada.usuarioDecision = usuario;
 
-        const actualizada = await manager.save(
-          Cotizacion,
-          cotizacion,
-        );
+const actualizada = await manager.save(
+  Cotizacion,
+  cotizacionBloqueada,
+);
 
         const historial = manager.create(HistorialSolicitud, {
           solicitud: {
