@@ -40,3 +40,18 @@
 .history-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.6rem}
 @media (max-width:760px){.summary-grid,.requests-list{grid-template-columns:repeat(2,minmax(0,1fr))}.page-header{align-items:flex-start}}
 @media (max-width:520px){.page-container{width:calc(100% - 1.25rem);padding:1rem 0}.summary-grid,.requests-list,.request-information,.detail-grid,.price-grid{grid-template-columns:1fr}.modal{padding:1rem}.modal-actions,.quotation-actions{flex-direction:column;align-items:stretch}.modal-actions .btn,.quotation-actions .btn{width:100%}}
+.expiration-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.8rem;
+  padding: 0.8rem;
+  border-radius: 9px;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.expiration-info.expired {
+  background: #fee2e2;
+  color: #991b1b;
+}

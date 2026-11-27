@@ -1,6 +1,6 @@
 
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import {
@@ -30,9 +30,11 @@ import { mensajeDeError } from '../../core/utils/http-error.util';
   templateUrl: './client-requests.component.html',
   styleUrl: './client-requests.component.css',
 })
-export class ClientRequestsComponent implements OnInit {
+export class ClientRequestsComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
 
+  protected readonly ahora = signal(Date.now());
+  private reloj: ReturnType<typeof setInterval> | undefined;
   protected readonly requestsService = inject(RequestsService);
   private readonly notificationsService = inject(NotificationsService);
   private readonly quotationsService = inject(QuotationsService);
@@ -146,10 +148,49 @@ export class ClientRequestsComponent implements OnInit {
     return this.solicitudes().filter((s) => s.estado === filtro);
   });
 
-  ngOnInit(): void {
-    this.cargarCatalogos();
-    this.cargarSolicitudes();
+ngOnInit(): void {
+  this.cargarCatalogos();
+  this.cargarSolicitudes();
+
+  this.reloj = setInterval(() => {
+    this.ahora.set(Date.now());
+  }, 1000);
+}
+
+ngOnDestroy(): void {
+  if (this.reloj) {
+    clearInterval(this.reloj);
   }
+}
+  
+protected cotizacionVencida(cotizacion: CotizacionItem): boolean {
+  if (!cotizacion.fechaVencimiento) {
+    return false;
+  }
+
+  return new Date(cotizacion.fechaVencimiento).getTime() <= this.ahora();
+}
+
+protected tiempoRestante(cotizacion: CotizacionItem): string {
+  if (!cotizacion.fechaVencimiento) {
+    return 'Sin fecha de vencimiento';
+  }
+
+  const diferencia =
+    new Date(cotizacion.fechaVencimiento).getTime() - this.ahora();
+
+  if (diferencia <= 0) {
+    return 'Cotización vencida';
+  }
+
+  const segundos = Math.floor(diferencia / 1000);
+  const dias = Math.floor(segundos / 86400);
+  const horas = Math.floor((segundos % 86400) / 3600);
+  const minutos = Math.floor((segundos % 3600) / 60);
+  const restantes = segundos % 60;
+
+  return `${dias}d ${horas}h ${minutos}m ${restantes}s`;
+}
 
   protected cargarCatalogos(): void {
     this.requestsService.obtenerCatalogos().subscribe({
