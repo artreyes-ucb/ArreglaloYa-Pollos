@@ -10,4 +10,13 @@ export class CategoriaServicio {
 
   @Column({ name: 'descripcion', type: 'text', nullable: true })
   descripcion: string | null;
+
+  @Column({
+    name: 'porcentaje_comision',
+    type: 'numeric',
+    precision: 5,
+    scale: 2,
+    default: 5.0,
+  })
+  porcentajeComision: string;
 }

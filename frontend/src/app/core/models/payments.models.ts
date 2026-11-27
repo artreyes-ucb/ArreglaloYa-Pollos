@@ -1,3 +1,10 @@
+export interface CategoriaComisionItem {
+  idCategoria: number;
+  nombre: string;
+  descripcion: string | null;
+  porcentajeComision: number;
+}
+
 export interface PagoItem {
   idPago: string;
   idProgramacion: string | null;
@@ -65,6 +72,7 @@ export interface ServicioEconomicoItem {
   horaFin: string;
   precioAcordado: number;
   anticipoReferencia25: number;
+  porcentajeComisionVigente: number;
   marcadoTerminadoPorTrabajador: boolean;
   fechaDeclaracionTrabajador: string | null;
   confirmadoPorCliente: boolean;
@@ -75,7 +83,9 @@ export interface ServicioEconomicoItem {
     idSolicitud: string;
     descripcion: string;
     ubicacionGeneral: string;
+    idCategoria: number | null;
     categoria: string;
+    porcentajeComisionCategoria: number;
     zona: string;
   };
   cliente: { idUsuario: string; nombre: string };

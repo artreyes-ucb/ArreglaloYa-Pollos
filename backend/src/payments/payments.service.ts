@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditService } from '../audit/audit.service';
 import { Rol } from '../common/enums/rol.enum';
+import { CategoriaServicio } from '../entities/categoria-servicio.entity';
 import { Comision } from '../entities/comision.entity';
 import { Evaluacion } from '../entities/evaluacion.entity';
 import { Pago } from '../entities/pago.entity';
@@ -18,6 +19,7 @@ import { SolicitudServicio } from '../entities/solicitud-servicio.entity';
 import { Usuario } from '../entities/usuario.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  ActualizarComisionCategoriaDto,
   CancelarServicioDto,
   ConfirmarPagoBilateralDto,
   CrearEvaluacionDto,
@@ -30,7 +32,7 @@ import {
 } from './dto/payments.dto';
 
 const PORCENTAJE_ANTICIPO = 0.25;
-const PORCENTAJE_COMISION = 0.05;
+const PORCENTAJE_COMISION_DEFECTO = 5.0;
 const HORAS_LIMITE_CANCELACION = 3;
 const DIAS_LIMITE_RECLAMO = 7;
 
@@ -41,6 +43,8 @@ export class PaymentsService {
     private readonly servicioRepo: Repository<ServicioProgramado>,
     @InjectRepository(SolicitudServicio)
     private readonly solicitudRepo: Repository<SolicitudServicio>,
+    @InjectRepository(CategoriaServicio)
+    private readonly categoriaRepo: Repository<CategoriaServicio>,
     @InjectRepository(Pago)
     private readonly pagoRepo: Repository<Pago>,
     @InjectRepository(Comision)
@@ -54,6 +58,76 @@ export class PaymentsService {
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  /**
+   * Lista todas las categorías con su porcentaje de comisión vigente configurado.
+   */
+  async listarCategoriasConComision() {
+    const categorias = await this.categoriaRepo.find({
+      order: { idCategoria: 'ASC' },
+    });
+
+    return categorias.map((cat) => ({
+      idCategoria: cat.idCategoria,
+      nombre: cat.nombre,
+      descripcion: cat.descripcion,
+      porcentajeComision: Number(cat.porcentajeComision ?? PORCENTAJE_COMISION_DEFECTO),
+    }));
+  }
+
+  /**
+   * Actualiza el porcentaje de comisión vigente de una categoría sin alterar
+   * las comisiones históricas ya calculadas en transacciones anteriores.
+   */
+  async actualizarComisionCategoria(
+    admin: Usuario,
+    idCategoria: number,
+    dto: ActualizarComisionCategoriaDto,
+  ) {
+    const categoria = await this.categoriaRepo.findOne({
+      where: { idCategoria },
+    });
+    if (!categoria) {
+      throw new NotFoundException('Categoría de servicio no encontrada');
+    }
+
+    if (
+      !Number.isFinite(dto.porcentajeComision) ||
+      dto.porcentajeComision < 0 ||
+      dto.porcentajeComision > 100
+    ) {
+      throw new BadRequestException(
+        'El porcentaje de comisión debe estar entre 0% y 100%',
+      );
+    }
+
+    const porcentajeAnterior = Number(
+      categoria.porcentajeComision ?? PORCENTAJE_COMISION_DEFECTO,
+    );
+    const porcentajeNuevo = Number(dto.porcentajeComision.toFixed(2));
+
+    categoria.porcentajeComision = porcentajeNuevo.toFixed(2);
+    const guardada = await this.categoriaRepo.save(categoria);
+
+    await this.auditService.registrarEvento(
+      admin.idUsuario,
+      'ACTUALIZAR_COMISION_CATEGORIA',
+      'categorias_servicio',
+      String(guardada.idCategoria),
+      {
+        categoria: guardada.nombre,
+        porcentajeAnterior,
+        porcentajeNuevo,
+      },
+    );
+
+    return {
+      idCategoria: guardada.idCategoria,
+      nombre: guardada.nombre,
+      descripcion: guardada.descripcion,
+      porcentajeComision: Number(guardada.porcentajeComision),
+    };
+  }
 
   /**
    * CU-21: Listar servicios contratados/programados del usuario (Cliente, Trabajador o Admin)
@@ -218,7 +292,10 @@ export class PaymentsService {
     const pago = await this.pagoRepo.findOne({
       where: { idPago },
       relations: {
-        programacion: { solicitud: { cliente: true }, perfil: { usuario: true } },
+        programacion: {
+          solicitud: { cliente: true, categoria: true },
+          perfil: { usuario: true },
+        },
       },
     });
 
@@ -278,7 +355,7 @@ export class PaymentsService {
       },
     );
 
-    // Si el servicio ya está completado y el pago final se concilió, calcular comisión 5% automáticamente
+    // Si el servicio ya está completado y el pago final se concilió, calcular comisión dinámica
     if (guardado.tipo === 'PAGO_FINAL' && guardado.estado === 'CONCILIADO' && sp.estado === 'COMPLETADO') {
       await this.calcularComisionInterna(sp, usuario.idUsuario);
     }
@@ -287,19 +364,21 @@ export class PaymentsService {
   }
 
   /**
-   * Tarjeta 3 [CU-20][RN-09]: Calcular y registrar comisión del 5% plataforma / 95% trabajador.
+   * Tarjeta 3 [CU-20][RN-09]: Calcular y registrar comisión dinámica según la categoría
+   * del servicio, congelando el porcentaje histórico aplicado en la transacción.
    */
   async calcularComision(usuario: Usuario, idProgramacion: string) {
     const sp = await this.obtenerServicioConRelaciones(idProgramacion);
     if (sp.estado !== 'COMPLETADO') {
       throw new BadRequestException(
-        'La comisión del 5% solo se calcula sobre servicios completados',
+        'La comisión solo se calcula sobre servicios completados',
       );
     }
     return this.calcularComisionInterna(sp, usuario.idUsuario);
   }
 
   private async calcularComisionInterna(sp: ServicioProgramado, idActor: string) {
+    // Si la comisión ya existe, se devuelve intacta conservando su porcentaje histórico
     const existente = await this.comisionRepo.findOne({
       where: { idProgramacion: sp.idProgramacion },
     });
@@ -312,14 +391,29 @@ export class PaymentsService {
       throw new BadRequestException('El servicio no tiene un precio acordado válido para calcular comisión');
     }
 
-    const montoComision = Number((precioFinal * PORCENTAJE_COMISION).toFixed(2));
+    // Obtener porcentaje dinámico vigente de la categoría del servicio
+    let porcentajeAplicado = PORCENTAJE_COMISION_DEFECTO;
+    const idCategoria = sp.solicitud?.categoria?.idCategoria;
+
+    if (idCategoria) {
+      const categoriaActual = await this.categoriaRepo.findOne({
+        where: { idCategoria },
+      });
+      if (categoriaActual && categoriaActual.porcentajeComision !== undefined) {
+        porcentajeAplicado = Number(categoriaActual.porcentajeComision);
+      }
+    } else if (sp.solicitud?.categoria?.porcentajeComision !== undefined) {
+      porcentajeAplicado = Number(sp.solicitud.categoria.porcentajeComision);
+    }
+
+    const montoComision = Number(((precioFinal * porcentajeAplicado) / 100).toFixed(2));
     const montoNetoTrabajador = Number((precioFinal - montoComision).toFixed(2));
 
     const comision = this.comisionRepo.create({
       idProgramacion: sp.idProgramacion,
       programacion: sp,
       precioFinal: precioFinal.toFixed(2),
-      porcentaje: '5.00',
+      porcentaje: porcentajeAplicado.toFixed(2),
       montoComision: montoComision.toFixed(2),
       montoNetoTrabajador: montoNetoTrabajador.toFixed(2),
       estado: 'REGISTRADA',
@@ -329,11 +423,13 @@ export class PaymentsService {
 
     await this.auditService.registrarEvento(
       idActor,
-      'CALCULAR_COMISION_5',
+      'CALCULAR_COMISION_DINAMICA',
       'comisiones',
       guardada.idComision,
       {
         idProgramacion: sp.idProgramacion,
+        categoria: sp.solicitud?.categoria?.nombre ?? 'Sin categoría',
+        porcentajeAplicado,
         precioFinal,
         montoComision,
         montoNetoTrabajador,
@@ -404,9 +500,9 @@ export class PaymentsService {
     sp.solicitud.estado = 'COMPLETADA';
     await this.solicitudRepo.save(sp.solicitud);
 
-    // Calcular comisión del 5% automáticamente si ya existe precio acordado
+    let comisionCalculada: Comision | null = null;
     if (Number(sp.precioAcordado) > 0) {
-      await this.calcularComisionInterna(sp, usuario.idUsuario);
+      comisionCalculada = await this.calcularComisionInterna(sp, usuario.idUsuario);
     }
 
     await this.auditService.registrarEvento(
@@ -417,11 +513,15 @@ export class PaymentsService {
       { fechaConfirmacion: sp.fechaConfirmacionCliente },
     );
 
+    const porcentajeMsg = comisionCalculada
+      ? `${Number(comisionCalculada.porcentaje).toFixed(2)}%`
+      : 'la tarifa de la categoría';
+
     await this.notificationsService.crearNotificacion({
       idUsuario: sp.perfil.usuario.idUsuario,
       tipo: 'SERVICIO_COMPLETADO',
       titulo: 'Servicio confirmado y completado',
-      mensaje: 'El cliente confirmó la conclusión del servicio. Se registró el cálculo de comisión del 5%.',
+      mensaje: `El cliente confirmó la conclusión del servicio. Se registró la comisión dinámica del ${porcentajeMsg}.`,
       entidadRelacionada: 'servicios_programados',
       idEntidadRelacionada: sp.idProgramacion,
     });
@@ -448,7 +548,6 @@ export class PaymentsService {
       throw new BadRequestException(`No se puede cancelar un servicio en estado ${sp.estado}`);
     }
 
-    // Validar límite de 3 horas antes de la cita (Sección 7.5 del documento)
     const fechaHoraCita = new Date(`${sp.fechaServicio}T${sp.horaInicio}`);
     const horasRestantes = (fechaHoraCita.getTime() - Date.now()) / (1000 * 60 * 60);
 
@@ -803,6 +902,10 @@ export class PaymentsService {
       this.reembolsoRepo.findOne({ where: { idProgramacion: sp.idProgramacion } }),
     ]);
 
+    const porcentajeComisionVigente = sp.solicitud.categoria?.porcentajeComision !== undefined
+      ? Number(sp.solicitud.categoria.porcentajeComision)
+      : PORCENTAJE_COMISION_DEFECTO;
+
     return {
       idProgramacion: sp.idProgramacion,
       estado: sp.estado,
@@ -811,6 +914,7 @@ export class PaymentsService {
       horaFin: sp.horaFin,
       precioAcordado: Number(sp.precioAcordado),
       anticipoReferencia25: Number((Number(sp.precioAcordado) * PORCENTAJE_ANTICIPO).toFixed(2)),
+      porcentajeComisionVigente,
       marcadoTerminadoPorTrabajador: sp.marcadoTerminadoPorTrabajador,
       fechaDeclaracionTrabajador: sp.fechaDeclaracionTrabajador,
       confirmadoPorCliente: sp.confirmadoPorCliente,
@@ -821,7 +925,9 @@ export class PaymentsService {
         idSolicitud: sp.solicitud.idSolicitud,
         descripcion: sp.solicitud.descripcion,
         ubicacionGeneral: sp.solicitud.ubicacionGeneral,
+        idCategoria: sp.solicitud.categoria?.idCategoria ?? null,
         categoria: sp.solicitud.categoria?.nombre ?? 'Servicio',
+        porcentajeComisionCategoria: porcentajeComisionVigente,
         zona: sp.solicitud.zona?.nombre ?? 'Sin zona',
       },
       cliente: {
