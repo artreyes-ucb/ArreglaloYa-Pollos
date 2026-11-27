@@ -142,4 +142,32 @@ export interface NotificacionItem {
 export interface NotificacionesResponse {
   notificaciones: NotificacionItem[];
   totalNoLeidas: number;
+  total?: number;
+}
+
+export interface PreferenciasNotificacion {
+  idPreferencia: string;
+  notifSolicitudes: boolean;
+  notifCotizaciones: boolean;
+  notifServicios: boolean;
+  notifPagos: boolean;
+  notifReclamos: boolean;
+  notifSistema: boolean;
+  fechaActualizacion: string;
+}
+
+export interface UpdatePreferenciasPayload {
+  notifSolicitudes?: boolean;
+  notifCotizaciones?: boolean;
+  notifServicios?: boolean;
+  notifPagos?: boolean;
+  notifReclamos?: boolean;
+  notifSistema?: boolean;
+}
+
+export interface FiltrosNotificacionesQuery {
+  soloNoLeidas?: boolean;
+  leida?: boolean;
+  tipo?: string;
+  q?: string;
 }
