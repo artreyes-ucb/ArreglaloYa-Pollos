@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../audit/audit.module';
+import { CategoriaServicio } from '../entities/categoria-servicio.entity';
 import { Comision } from '../entities/comision.entity';
 import { Evaluacion } from '../entities/evaluacion.entity';
 import { Pago } from '../entities/pago.entity';
@@ -17,6 +18,7 @@ import { PaymentsService } from './payments.service';
     TypeOrmModule.forFeature([
       ServicioProgramado,
       SolicitudServicio,
+      CategoriaServicio,
       Pago,
       Comision,
       Reembolso,

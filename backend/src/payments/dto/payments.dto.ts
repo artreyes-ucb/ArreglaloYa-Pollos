@@ -131,3 +131,20 @@ export class ResolverReclamoDto {
   @MaxLength(2000)
   resolucion: string;
 }
+
+export class ActualizarComisionCategoriaDto {
+  @ApiProperty({
+    description: 'Nuevo porcentaje de comisión para la categoría (0% a 100%)',
+    minimum: 0,
+    maximum: 100,
+    example: 7.5,
+  })
+  @Type(() => Number)
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'El porcentaje debe ser un número con máximo 2 decimales' },
+  )
+  @Min(0, { message: 'El porcentaje de comisión no puede ser negativo' })
+  @Max(100, { message: 'El porcentaje de comisión no puede superar el 100%' })
+  porcentajeComision: number;
+}

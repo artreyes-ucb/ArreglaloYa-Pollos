@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -16,6 +17,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Usuario } from '../entities/usuario.entity';
 import {
+  ActualizarComisionCategoriaDto,
   CancelarServicioDto,
   ConfirmarPagoBilateralDto,
   CrearEvaluacionDto,
@@ -34,6 +36,24 @@ import { PaymentsService } from './payments.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Get('categories/commissions')
+  @Roles(Rol.CLIENTE, Rol.TRABAJADOR, Rol.ADMIN, Rol.SUPERADMIN)
+  @ApiOperation({ summary: 'Listar categorías con su porcentaje de comisión vigente' })
+  listarCategoriasConComision() {
+    return this.paymentsService.listarCategoriasConComision();
+  }
+
+  @Patch('categories/:idCategoria/commission')
+  @Roles(Rol.ADMIN, Rol.SUPERADMIN)
+  @ApiOperation({ summary: 'Actualizar el porcentaje dinámico de comisión de una categoría' })
+  actualizarComisionCategoria(
+    @CurrentUser() admin: Usuario,
+    @Param('idCategoria', ParseIntPipe) idCategoria: number,
+    @Body() dto: ActualizarComisionCategoriaDto,
+  ) {
+    return this.paymentsService.actualizarComisionCategoria(admin, idCategoria, dto);
+  }
 
   @Get('services')
   @Roles(Rol.CLIENTE, Rol.TRABAJADOR, Rol.ADMIN, Rol.SUPERADMIN)
@@ -77,7 +97,7 @@ export class PaymentsController {
 
   @Post('services/:idProgramacion/comision')
   @Roles(Rol.ADMIN, Rol.SUPERADMIN, Rol.TRABAJADOR)
-  @ApiOperation({ summary: 'Calcular y registrar comisión del 5% plataforma / 95% trabajador (CU-20 / RN-09)' })
+  @ApiOperation({ summary: 'Calcular y registrar comisión dinámica por categoría (CU-20 / RN-09)' })
   calcularComision(
     @CurrentUser() usuario: Usuario,
     @Param('idProgramacion', new ParseUUIDPipe()) idProgramacion: string,
