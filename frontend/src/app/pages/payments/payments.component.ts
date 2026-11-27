@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
+  CategoriaComisionItem,
   PagoItem,
   ReclamoItem,
   ReembolsoItem,
@@ -35,6 +36,10 @@ export class PaymentsComponent implements OnInit {
   protected readonly auth = inject(AuthService);
   private readonly paymentsService = inject(PaymentsService);
   private readonly notificationsService = inject(NotificationsService);
+
+  protected readonly categoriasComision = signal<CategoriaComisionItem[]>([]);
+  protected readonly borradoresComision = signal<Record<number, number>>({});
+  protected readonly guardandoCategoriaId = signal<number | null>(null);
 
   protected readonly servicios = signal<ServicioEconomicoItem[]>([]);
   protected readonly cargando = signal(false);
@@ -94,7 +99,70 @@ export class PaymentsComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.cargarTodo();
+  }
+
+  protected cargarTodo(): void {
     this.cargarServicios();
+    this.cargarCategoriasComision();
+  }
+
+  protected cargarCategoriasComision(): void {
+    this.paymentsService.listarCategoriasComision().subscribe({
+      next: (lista) => {
+        this.categoriasComision.set(lista);
+        const mapa: Record<number, number> = {};
+        for (const cat of lista) {
+          mapa[cat.idCategoria] = cat.porcentajeComision;
+        }
+        this.borradoresComision.set(mapa);
+      },
+      error: () => {
+        // Si falla la carga secundaria no bloquea la vista principal
+      },
+    });
+  }
+
+  protected actualizarBorradorComision(idCategoria: number, valorRaw: string): void {
+    const numero = Number(valorRaw);
+    this.borradoresComision.update((actual) => ({
+      ...actual,
+      [idCategoria]: Number.isFinite(numero) ? numero : 0,
+    }));
+  }
+
+  protected guardarComisionCategoria(cat: CategoriaComisionItem): void {
+    const nuevoPorcentaje = this.borradoresComision()[cat.idCategoria];
+    if (
+      nuevoPorcentaje === undefined ||
+      !Number.isFinite(nuevoPorcentaje) ||
+      nuevoPorcentaje < 0 ||
+      nuevoPorcentaje > 100
+    ) {
+      this.error.set('El porcentaje de comisión debe estar entre 0% y 100%.');
+      return;
+    }
+
+    this.guardandoCategoriaId.set(cat.idCategoria);
+    this.error.set('');
+    this.mensaje.set('');
+
+    this.paymentsService.actualizarComisionCategoria(cat.idCategoria, nuevoPorcentaje).subscribe({
+      next: (actualizada) => {
+        this.guardandoCategoriaId.set(null);
+        this.mensaje.set(
+          `Comisión de "${actualizada.nombre}" actualizada a ${actualizada.porcentajeComision.toFixed(2)}%. Las transacciones anteriores conservan su porcentaje histórico.`,
+        );
+        this.cargarCategoriasComision();
+        this.cargarServicios();
+      },
+      error: (err: unknown) => {
+        this.guardandoCategoriaId.set(null);
+        this.error.set(
+          mensajeDeError(err, 'No se pudo actualizar el porcentaje de comisión de la categoría.'),
+        );
+      },
+    });
   }
 
   protected cargarServicios(): void {
@@ -189,7 +257,7 @@ export class PaymentsComponent implements OnInit {
   protected confirmarConclusion(sp: ServicioEconomicoItem): void {
     this.ejecutarAccion(
       this.paymentsService.confirmarConclusionCliente(sp.idProgramacion),
-      'Conclusión confirmada. El servicio pasó a COMPLETADO y se calculó la comisión del 5%.',
+      `Conclusión confirmada. El servicio pasó a COMPLETADO y se aplicó la comisión dinámica de ${sp.porcentajeComisionVigente.toFixed(2)}% para ${sp.solicitud.categoria}.`,
     );
   }
 
@@ -252,6 +320,10 @@ export class PaymentsComponent implements OnInit {
 
   protected tieneTipoPago(sp: ServicioEconomicoItem, tipo: string): boolean {
     return sp.pagos.some((p) => p.tipo === tipo);
+  }
+
+  protected porcentajeNetoTrabajador(porcentajeComision: string | number): number {
+    return Number((100 - Number(porcentajeComision)).toFixed(2));
   }
 
   private ejecutarAccion(obs$: { subscribe: Function }, exitoMsg: string): void {

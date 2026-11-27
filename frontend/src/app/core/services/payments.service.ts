@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  CategoriaComisionItem,
   ComisionItem,
   EvaluacionItem,
   PagoItem,
@@ -15,6 +16,20 @@ import {
 export class PaymentsService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/payments`;
+
+  listarCategoriasComision(): Observable<CategoriaComisionItem[]> {
+    return this.http.get<CategoriaComisionItem[]>(`${this.baseUrl}/categories/commissions`);
+  }
+
+  actualizarComisionCategoria(
+    idCategoria: number,
+    porcentajeComision: number,
+  ): Observable<CategoriaComisionItem> {
+    return this.http.patch<CategoriaComisionItem>(
+      `${this.baseUrl}/categories/${idCategoria}/commission`,
+      { porcentajeComision },
+    );
+  }
 
   listarMisServicios(): Observable<ServicioEconomicoItem[]> {
     return this.http.get<ServicioEconomicoItem[]>(`${this.baseUrl}/services`);
