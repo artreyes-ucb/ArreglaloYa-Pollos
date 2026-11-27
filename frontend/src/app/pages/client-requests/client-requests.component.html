@@ -483,14 +483,30 @@
                   <p>{{ cotizacion.condiciones }}</p>
                 }
 
-                <small>
-                  Enviada: {{ cotizacion.fechaEnvio | date:'dd/MM/yyyy HH:mm' }}
-                </small>
+               <small>
+  Enviada: {{ cotizacion.fechaEnvio | date:'dd/MM/yyyy HH:mm' }}
+</small>
+
+@if (cotizacion.fechaVencimiento) {
+  <div
+    class="expiration-info"
+    [class.expired]="cotizacionVencida(cotizacion)"
+  >
+    <strong>
+      {{ tiempoRestante(cotizacion) }}
+    </strong>
+
+    <small>
+      Vencimiento:
+      {{ cotizacion.fechaVencimiento | date:'dd/MM/yyyy HH:mm' }}
+    </small>
+  </div>
+}
 
                 @if (cotizacion.estado === 'ENVIADA') {
                   <div class="quotation-actions">
                     <button type="button" class="btn btn-primary"
-                      [disabled]="cotizacionRespondiendo() !== null"
+                      [disabled]="cotizacionRespondiendo() !== null || cotizacionVencida(cotizacion)"
                       (click)="responderCotizacion(cotizacion, 'ACEPTADA')">
                       {{ cotizacionRespondiendo() === cotizacion.idCotizacion
                         ? 'Procesando...' : 'Aceptar cotización' }}
